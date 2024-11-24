@@ -220,6 +220,7 @@ const switches = [
 	measuredCommentSwitch,
 	selectionModeButton
 ];
+
 // Boolean set to False
 function setAllBoolsToFalse() {
 	isAddingConnector = false;

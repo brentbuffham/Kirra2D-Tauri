@@ -10,6 +10,7 @@
     "@tauri-apps/cli": "^2"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.1.1",
     "crypto-js": "^4.2.0",
     "d3-delaunay": "^6.0.4",
     "delaunator": "^5.0.1",
