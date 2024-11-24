@@ -1,0 +1,1244 @@
+:root {
+  --primary-color: #828282;
+  /* Default Button Color */
+  --dark-mode-color: #1a1a1a;
+  /* Dark Mode: 10% Grey */
+}
+
+body {
+  background-color: #cecece;
+  /* Default Background Color */
+  color: #000;
+  /* Default Text Color */
+  transition: background-color 2s, color 2s;
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+body.dark-mode {
+  background-color: var(--dark-mode-color);
+  color: #cecece;
+}
+
+.canvas-container {
+  display: block;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  margin-right: 5px;
+  width: auto;
+  height: auto;
+}
+
+canvas {
+  display: block;
+  width: auto;
+  height: auto;
+  border: 1px solid var(--primary-color);
+  background-color: rgb(255, 255, 255);
+  margin-left: auto;
+  margin-right: auto;
+  transition: background-color 2s, color 2s;
+
+}
+
+.dark-canvas {
+  background-color: black;
+}
+
+.button-container-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-gap: 5px;
+  text-align: center;
+}
+
+.button-container-2col a {
+  display: block;
+  padding: 5px;
+  background-color: var(--primary-color);
+  color: #000;
+  text-decoration: none;
+  border-radius: 4px;
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.button-container-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 32%);
+  grid-gap: 5px;
+  text-align: center;
+  margin-right: 5px;
+}
+
+.button-container-3col a {
+  display: block;
+  padding: 5px;
+  background-color: var(--primary-color);
+  color: #000;
+  text-decoration: none;
+  border-radius: 4px;
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.button-container-1col {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  grid-gap: 5px;
+  text-align: center;
+}
+
+.button-container-1col a {
+  display: block;
+  padding: 5px;
+  background-color: var(--primary-color);
+  color: #000;
+  text-decoration: none;
+  border-radius: 4px;
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.button-container a.dark-mode {
+  background-color: var(--dark-mode-color);
+  color: #fff;
+}
+
+.p1 {
+  font-family: Arial, sans-serif;
+}
+
+.dark-mode-toggle {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.dark-mode-toggle input[type="checkbox"] {
+  display: none;
+}
+
+.dark-mode-toggle label {
+  display: flex;
+  align-items: center;
+  width: 48px;
+  height: 22px;
+  background-color: #999;
+  position: relative;
+  border-radius: 34px;
+  cursor: pointer;
+  transition: background-color 2s;
+}
+
+.dark-mode-toggle label:after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  top: 1px;
+  left: 1px;
+  background-color: #fff;
+  transition: transform 2s;
+}
+
+.dark-mode-toggle label .sun-icon {
+  margin-right: 2px;
+}
+
+.dark-mode-toggle label .moon-icon {
+  margin-left: 2px;
+}
+
+.dark-mode-toggle input:checked+label {
+  background-color: #666;
+}
+
+.dark-mode-toggle input:checked+label:after {
+  transform: translateX(24px);
+}
+
+
+
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  transform: scale(0.8);
+}
+
+.container {
+  display: flex;
+  align-items: center;
+}
+
+input[type=number] {
+  cursor: pointer;
+  color: #333;
+  font-size: 18px;
+  text-align: center;
+  position: relative;
+}
+
+input[type="number2"] {
+  cursor: pointer;
+  color: #333;
+  font-size: 15px;
+  width: 5ch;
+  text-align: center;
+  position: relative;
+}
+
+input[type="number3"] {
+  cursor: pointer;
+  color: #333;
+  font-size: 15px;
+  width: 18ch;
+  text-align: center;
+  position: relative;
+}
+
+/*style the color input field in alignment with the number2 input field*/
+input[type=color] {
+  cursor: pointer;
+  color: #333;
+  font-size: 12px;
+  width: 7ch;
+  max-height: 22px;
+  text-align: center;
+  position: relative;
+}
+
+input[type=text] {
+  cursor: pointer;
+  color: #333;
+  font-size: 18px;
+  text-align: center;
+  position: relative;
+}
+
+input[type=text2] {
+  cursor: pointer;
+  color: #333;
+  font-size: 15px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+}
+
+input[type=text3] {
+  cursor: pointer;
+  color: #333;
+  font-size: 15px;
+  width: 18ch;
+  text-align: center;
+  position: relative;
+}
+
+textarea {
+  cursor: pointer;
+  color: #333;
+  font-size: 15px;
+  width: auto;
+  text-align: center;
+  position: relative;
+  /* Additional properties for textarea */
+  resize: vertical;
+  /* Allows vertical resizing, none to disable */
+}
+
+input[type=radio] {
+  width: auto;
+  height: 12px;
+  font-size: 12px;
+}
+
+input[type=range] {
+  padding: 2px;
+  margin-left: 10%;
+  margin-right: 10%;
+  width: 80%;
+  color: #333;
+}
+
+input[type=file] {
+  padding: 2px;
+  margin-inline: 2px;
+  color: #818181;
+}
+
+.box {
+  cursor: pointer;
+  color: #333;
+  font-size: 18px;
+  border-radius: 4px;
+  text-align: center;
+  position: relative;
+}
+
+.box2 {
+  cursor: pointer;
+  color: #333;
+  font-size: 12px;
+  border-radius: 4px;
+  text-align: center;
+  position: relative;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 22px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-container {
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+}
+
+.switch-container label {
+  margin-right: 10px;
+  /* Optional: Add some space between label and switch */
+  font-size: 10px;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  width: 80%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--primary-color);
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 1px;
+  bottom: 1px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked+.slider {
+  background-color: #00a91c;
+}
+
+input:checked+.slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+button {
+  padding: 2px;
+  background-color: var(--primary-color);
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+  border: none;
+  /* Remove the border */
+  border-radius: 4px;
+  outline: none;
+  /* Remove the outline */
+  box-shadow: none;
+  /* Remove the box shadow */
+  width: 25px;
+  /* Set the width to desired size */
+  height: 25px;
+  /* Set the height to the same value as the width */
+  margin-inline: 5px;
+  /* Add the desired space below the button */
+  margin: 2px;
+}
+
+.button-1 {
+  padding-bottom: 5px;
+  padding-top: 2px;
+  padding-inline: 10px;
+  background-color: firebrick;
+  color: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+  border: none;
+  /* Remove the border */
+  border-radius: 4px;
+  outline: none;
+  /* Remove the outline */
+  box-shadow: none;
+  /* Remove the box shadow */
+  width: 40px;
+  /* Set the width to desired size */
+  height: 18px;
+  /* Add the desired space below the button */
+  margin-top: 0px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.button-save1 {
+  padding-bottom: 5px;
+  padding-top: 2px;
+  padding-inline: 10px;
+  background-color: rgb(0, 100, 0);
+  color: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  transition: background-color 0.3s, color 0.3s;
+  border: none;
+  border-radius: 4px;
+  outline: none;
+  width: auto;
+  height: auto;
+  margin: 2px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+
+  /* Bevel effect inside the button */
+  /* box-shadow: inset 3px 3px 3px rgba(0, 0, 0, 0.2), */
+  /* Shadow on top right */
+  /* inset -2px -2px 3px rgba(255, 255, 255, 0.6);
+  cursor: pointer; */
+  /* Changes cursor to pointer on hover */
+}
+
+.button-save1:hover {
+  background-color: rgb(0, 150, 0);
+  /* Slightly lighter green on hover */
+}
+
+
+.button-save2 {
+  padding-bottom: 5px;
+  padding-top: 2px;
+  padding-inline: 10px;
+  background-color: rgb(213, 216, 0);
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  transition: background-color 0.3s, color 0.3s;
+  border: none;
+  /* Remove the border */
+  border-radius: 4px;
+  outline: none;
+  /* Remove the outline */
+  box-shadow: none;
+  /* Remove the box shadow */
+  width: auto;
+  /* Set the width to desired size */
+  height: auto;
+  /* Add the desired space below the button */
+  margin: 2px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  /* Bevel effect inside the button */
+  /* box-shadow: inset 3px 3px 3px rgba(0, 0, 0, 0.2), */
+  /* Shadow on top right */
+  /* inset -2px -2px 3px rgba(255, 255, 255, 0.6);
+  cursor: pointer; */
+  /* Changes cursor to pointer on hover */
+}
+
+.button-save2:hover {
+  background-color: rgb(255, 255, 0);
+  /* Slightly lighter yellow on hover */
+}
+
+.button-save3 {
+  padding-bottom: 5px;
+  padding-top: 2px;
+  padding-inline: 10px;
+  background-color: rgb(137, 16, 0);
+  color: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  transition: background-color 0.3s, color 0.3s;
+  border: none;
+  /* Remove the border */
+  border-radius: 4px;
+  outline: none;
+  /* Remove the outline */
+  box-shadow: none;
+  /* Remove the box shadow */
+  width: auto;
+  /* Set the width to desired size */
+  height: auto;
+  /* Add the desired space below the button */
+  margin: 2px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+
+  /* Bevel effect inside the button */
+  /* box-shadow: inset 3px 3px 3px rgba(0, 0, 0, 0.2), */
+  /* Shadow on top right */
+  /* inset -2px -2px 3px rgba(255, 255, 255, 0.6); */
+  /* cursor: pointer; */
+  /* Changes cursor to pointer on hover */
+  cursor: pointer;
+}
+
+.button-save3:hover {
+  background-color: rgb(190, 0, 0);
+  /* Slightly lighter red on hover */
+
+}
+
+.label {
+  padding-bottom: 5px;
+  padding-top: 2px;
+  padding-inline: 10px;
+  background-color: var(--primary-color);
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  transition: background-color 0.3s, color 0.3s;
+  border: none;
+  /* Remove the border */
+  border-radius: 4px;
+  outline: none;
+  /* Remove the outline */
+  box-shadow: none;
+  /* Remove the box shadow */
+  width: auto;
+  /* Set the width to desired size */
+  height: auto;
+  /* Add the desired space below the button */
+  margin: 2px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.button-norm {
+  padding-bottom: 5px;
+  padding-top: 2px;
+  padding-inline: 10px;
+  background-color: var(--primary-color);
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  transition: background-color 0.3s, color 0.3s;
+  border: none;
+  /* Remove the border */
+  border-radius: 4px;
+  outline: none;
+  /* Remove the outline */
+  box-shadow: none;
+  /* Remove the box shadow */
+  width: auto;
+  /* Set the width to desired size */
+  height: auto;
+  /* Add the desired space below the button */
+  margin: 2px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button-norm:hover {
+  /* make the --primary-color a darker shade on hover */
+  background-color: #585858;
+  /* Slightly lighter red on hover */
+}
+
+.button-norm-red {
+  padding-bottom: 5px;
+  padding-top: 2px;
+  padding-inline: 10px;
+  background-color: red;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  transition: background-color 0.3s, color 0.3s;
+  border: none;
+  /* Remove the border */
+  border-radius: 4px;
+  outline: none;
+  /* Remove the outline */
+  box-shadow: none;
+  /* Remove the box shadow */
+  width: auto;
+  /* Set the width to desired size */
+  height: auto;
+  /* Add the desired space below the button */
+  margin: 2px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button-norm-red:hover {
+  /* make the --primary-color a darker shade on hover */
+  background-color: #bb0000;
+  /* Slightly lighter red on hover */
+}
+
+.button-bug {
+  padding-bottom: 10px;
+  padding-top: 8px;
+  padding-inline: 10px;
+  background-color: #ff0000;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  transition: background-color 0.3s, color 0.3s;
+  display: block;
+  margin: 0 auto;
+  text-align: center;
+  border: none;
+  border-radius: 8px;
+  outline: none;
+  box-shadow: none;
+  width: auto;
+  height: auto;
+}
+
+/* create a button that is the same as the .button-1 but with a different color and a red diagonal line from top right to bottom left */
+.button-notinuse {
+  background-color: #585858;
+  /* background color of a diagonal gradient from top right to bottom left */
+  background-image: linear-gradient(135deg, #585858 48%, red 48%, red 52%, #585858 52%, #585858 100%);
+  color: red;
+  font-family: Arial, Helvetica, sans-serif;
+  border-radius: 4px;
+  border: none;
+  /* Remove the outline */
+  width: 40px;
+  /* Set the width to desired size */
+  height: 18px;
+  /* Set the height to the same value as the width */
+  margin-inline: 2px;
+  /* Add the desired space below the button */
+  text-decoration: none;
+  padding-left: 2px;
+  padding-right: 2px;
+  display: none;
+  /*Hides the buttons */
+}
+
+input[type="color"] {
+  border: none;
+  border-width: 1px;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+
+.spacer {
+  flex-grow: 1;
+}
+
+label {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 18px;
+  text-align: left;
+  position: relative;
+}
+
+.labelWhite18 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 18px;
+  text-align: left;
+  color: #ffffff;
+  position: relative;
+}
+
+.labelWhite15 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  text-align: left;
+  color: #ffffff;
+  position: relative;
+}
+
+.labelWhite12 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  text-align: center;
+  color: #ffffff;
+  position: relative;
+}
+
+.labelWhite12c {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  text-align: left;
+  color: #ffffff;
+  position: relative;
+}
+
+.labelbig {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 25px;
+  text-align: center;
+  position: relative;
+  padding: 2px;
+  margin-inline: 2px;
+}
+
+.label2 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  text-align: left;
+  position: relative;
+}
+
+.label3 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
+  text-align: center;
+  position: relative;
+  padding: 2px;
+  margin-inline: 2px;
+}
+
+.label4 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  text-align: center;
+  position: relative;
+  padding: 2px;
+  margin-inline: 2px;
+}
+
+.label5 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
+  text-align: left;
+  position: relative;
+  padding: 2px;
+  margin-inline: 2px;
+}
+
+.label4:hover,
+.label4:focus {
+  background-color: red;
+}
+
+.labelleft {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  text-align: left;
+  position: relative;
+  padding: 2px;
+  margin-inline: 2px;
+}
+
+/* Style the buttons that are used to open and close the accordion panel */
+.accordion {
+  background-color: var(--primary-color);
+  color: var(--dark-mode-color);
+  cursor: pointer;
+  padding: 5px;
+  margin-right: 10px;
+  margin-left: 10px;
+  width: 92%;
+  text-align: center;
+  border: none;
+  outline: none;
+  transition: 0.4s;
+}
+
+/* Add a background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
+.active,
+.accordion:hover {
+  background-color: red;
+}
+
+.accordion:after {
+  content: '\02795';
+  /* Unicode character for "plus" sign (+) */
+  font-size: 8px;
+  color: #660000;
+  float: right;
+  margin-left: 5px;
+}
+
+.active:after {
+  content: "\2796";
+  /* Unicode character for "minus" sign (-) */
+}
+
+/* Style the accordion panel. Note: hidden by default */
+.panel {
+  padding: 5px;
+  background-color: none;
+  color: none;
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+  border-radius: 4px;
+  margin-left: 5px;
+  margin-right: 5px;
+  border: none;
+  display: none;
+  overflow: hidden;
+}
+
+/* Style the accordion panel. Note: hidden by default */
+.panel2 {
+  padding: 5px;
+  background-color: none;
+  color: none;
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+  border-radius: 4px;
+  margin-left: 5px;
+  margin-right: 5px;
+  border: none;
+  display: none;
+
+}
+
+.chart-container {
+  height: 400px;
+  /* Set the fixed height you desire */
+  width: 100%;
+  /* Set the initial width to occupy the full width of the parent element */
+  /*height: auto;  Adjust based on your layout */
+  overflow: visible;
+  /* Ensure the mode bar is not cut off */
+}
+
+/* Overriding Plotly's mode bar styles */
+.modebar {
+  display: static !important;
+  overflow-x: visible !important;
+  justify-content: center;
+  /* Center the mode bar items */
+  align-items: center;
+  /* Align items vertically */
+  width: auto !important;
+  /* Auto width based on content */
+  height: auto !important;
+  /* Auto height based on content */
+  background: none !important;
+  /* No background */
+}
+
+.modebar-btn svg {
+  height: 14px !important;
+  /* Adjust to desired size */
+  width: 14px !important;
+  /* Adjust to desired size */
+}
+
+.modebar-btn {
+  height: 16px !important;
+  width: 16px !important;
+  background: none !important;
+  /* round corners */
+  margin: 0 2px;
+  /* space between buttons */
+}
+
+/* Hide default radio button */
+.radio-buttons-custom input[type="radio"] {
+  display: none;
+}
+
+/* Hide default radio button */
+.toggle-buttons-custom input[type="checkbox"] {
+  display: none;
+}
+
+/* Style the icon button */
+.icon-button {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  background-color: var(--primary-color);
+  /* Set the default color */
+  border: none;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 18px;
+  line-height: 28px;
+  cursor: pointer;
+  margin-right: 5px;
+  color: var(--dark-mode-color);
+  margin: 2px;
+}
+
+/* Set the icon style using data attribute */
+.icon-button::before {
+  content: attr(data-content);
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+
+}
+
+/* Style the selected (checked) button */
+.radio-buttons-custom input[type="radio"]:checked+.icon-button {
+  background-color: red;
+  /* Set the selected color */
+}
+
+/* Style the selected (checked) button */
+.toggle-buttons-custom input[type="checkbox"]:checked+.icon-button {
+  background-color: red;
+  border-color: red;
+  /* Set the selected color */
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  font-size: 22px;
+  cursor: pointer;
+  margin-right: 5px;
+  color: var(--dark-mode-color);
+  margin: 2px;
+}
+
+/* The side navigation menu */
+.sidenav-Right {
+  height: 100%;
+  width: 0;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  background-color: #cecece;
+  overflow-x: hidden;
+  padding-top: 0px;
+  margin-right: 0px;
+  margin-left: 0px;
+  transition: 0.5s;
+  border: var(--primary-color);
+  border-style: solid;
+  border-width: 1px;
+}
+
+.sidenav-Right.dark-mode {
+  background-color: var(--dark-mode-color);
+  color: #cecece;
+}
+
+/* The navigation menu links */
+.sidenav-Right a {
+  padding: 0px;
+  text-decoration: none;
+  font-size: 14px;
+  color: var(--primary-color);
+  display: block;
+  transition: 0.3s;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidenav-Right a:hover {
+  color: #ff0000;
+}
+
+/* Position and style the close button (top right corner) */
+.sidenav-Right .closebtnR {
+  position: absolute;
+  top: 0px;
+  left: 20px;
+  font-size: 36px;
+  margin-right: 0px;
+}
+
+/* The side navigation menu */
+.sidenav-Left {
+  height: 100%;
+  width: 0;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  background-color: #cecece;
+  overflow-x: hidden;
+  padding-top: 0px;
+  margin-right: 0px;
+  margin-left: 0px;
+  transition: 0.5s;
+  border: var(--primary-color);
+  border-style: solid;
+  border-width: 1px;
+}
+
+.sidenav-Left.dark-mode {
+  background-color: var(--dark-mode-color);
+  color: #cecece;
+}
+
+/* The navigation menu links */
+.sidenav-Left a {
+  padding: 0px;
+  text-decoration: none;
+  font-size: 14px;
+  color: var(--primary-color);
+  display: block;
+  transition: 0.3s;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidenav-Left a:hover {
+  color: #ff0000;
+}
+
+/* Position and style the close button (top right corner) */
+.sidenav-Left .closebtnL {
+  position: absolute;
+  top: 0px;
+  right: 25px;
+  font-size: 36px;
+  margin-left: 50px;
+}
+
+.resize-handle-right {
+  width: 5px;
+  height: 100%;
+  background: #555;
+  /* Or any color of your choice */
+  cursor: ew-resize;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.resize-handle-left {
+  width: 5px;
+  height: 100%;
+  background: #555;
+  /* Or any color of your choice */
+  cursor: ew-resize;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+
+#main {
+  transition: margin-left .5s;
+  padding: 20px;
+}
+
+.containerSideNav {
+  font-size: 22px;
+  cursor: pointer;
+}
+
+/* Dark grey theme for SweetAlert */
+.swal2-popup {
+  background-color: #333;
+  color: #fff;
+}
+
+.swal2-title {
+  color: #fff;
+}
+
+.swal2-icon {
+  color: #fff;
+}
+
+.swal2-content {
+  color: #fff;
+}
+
+.confirm[type="button"] {
+  width: 80px;
+  height: 40px;
+  background-color: #00a91c;
+  color: #fff;
+  text-align: center;
+}
+
+.cancel[type="button"] {
+  width: 80px;
+  height: 40px;
+  color: #fff;
+  background-color: #980000;
+  text-align: center;
+}
+
+.custom-popup-container {
+  background-color: #333;
+  border: 1px solid #555;
+}
+
+.slider-container {
+  position: relative;
+}
+
+.slider-button {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  border: none;
+  cursor: pointer;
+}
+
+.slider-button:hover {
+  background-color: #ff0000;
+}
+
+.slider-button:active {
+  background-color: #888;
+}
+
+.slider-button:first-of-type {
+  left: 0;
+}
+
+.slider-button:last-of-type {
+  right: 0;
+}
+
+.button-container-3flexcol {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  /* Three columns with the center one being flexible */
+  gap: 10px;
+  /* Adjust the gap as needed */
+  align-items: center;
+  /* Vertically center items in the container */
+  text-align: center;
+  /* Center text within columns */
+}
+
+.button-container-2coleven {
+  display: grid;
+  grid-template-columns: 50% 50%;
+  gap: 2px;
+  /* Adjust the gap as needed */
+  align-items: center;
+  /* Vertically center items in the container */
+  text-align: center;
+  /* Center text within columns */
+}
+
+.navbar {
+  background-color: var(--primary-color);
+  overflow: hidden;
+}
+
+.navbar a {
+  float: left;
+  display: inline-flex;
+  color: white;
+  text-align: center;
+  padding: 10px 10px;
+  text-decoration: none;
+}
+
+.navbar a:hover {
+  background-color: #ff0000;
+  color: var;
+}
+
+.section {
+  padding: 20px;
+}
+
+.section-heading {
+  color: #c10000;
+}
+
+.image-container1 {
+  width: 100vw;
+  height: 200px;
+  /* Ensures the image doesn't exceed the container */
+}
+
+.image-container1 img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  /* or contain */
+}
+
+
+.image-container2 {
+  width: 90vw;
+  height: auto;
+  display: block;
+}
+
+.image-container2 img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  border-radius: 10px;
+  max-width: 80%;
+}
+
+.image-container3 {
+  width: 70vw;
+  height: auto;
+  display: block;
+}
+
+.image-container3 img {
+  width: 70%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  border-radius: 10px;
+  max-width: 70%;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid var(--primary-color);
+  padding: 5px;
+  text-align: left;
+  font-size: 12px;
+}
+
+th {
+  background-color: #444444;
+  color: #ffffff;
+}
+
+td {
+  background-color: #dddddd;
+  color: #000000;
+  /* Default text color */
+}
+
+.dark-mode td {
+  color: #000000;
+  /* Dark mode text color */
+}
