@@ -8796,7 +8796,7 @@ function getMousePos(canvas, evt) {
 }
 
 function openHelp() {
-	window.open("https://blastingapps.com/kirrausermanual.html");
+	shell.open("https://blastingapps.com/kirrausermanual.html");
 }
 
 function zoomIn() {
