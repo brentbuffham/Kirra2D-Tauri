@@ -2,6 +2,9 @@
 // Author: Brent Buffham
 // Last Modified: 20240917 @ 2204 AWST
 
+//imports
+import SimpleModal from "./modals/simpleModal.js";
+
 const canvas = document.getElementById("canvas");
 const padding = 10; // add 10 pixels of padding
 
@@ -274,6 +277,7 @@ document.getElementById("resetZoomButton").addEventListener("click", resetZoom);
 document.getElementById("deleteHoleButton").addEventListener("click", deleteSelectedHole);
 document.getElementById("deletePatternButton").addEventListener("click", deleteSelectedPattern);
 document.getElementById("deleteAllPatternsButton").addEventListener("click", deleteSelectedAllPatterns);
+document.getElementById("clear-canvas-new-button").addEventListener("click", clearCanvasWithNotification);
 
 const option1 = document.getElementById("display1");
 const option2 = document.getElementById("display2");
@@ -1760,16 +1764,17 @@ canvasContainer.addEventListener(
 );
 
 // Access the slider element and add an event listener to track changes
-const slider = document.getElementById("toeSlider");
-slider.addEventListener("input", function () {
+const toeSlider = document.getElementById("toeSlider");
+let toeSizeInMeters = parseFloat(toeSlider.value);
+toeSlider.addEventListener("input", function () {
 	// Calculate the toe size in meters by using the slider value directly
-	const toeSizeInMeters = parseFloat(this.value);
+	toeSizeInMeters = parseFloat(this.value);
 
 	// Update the label with the calculated toe size
 	toeLabel.textContent = "Toe Size: " + toeSizeInMeters.toFixed(2) + "m";
 
 	// Call the drawData function with the updated toe size in meters
-	drawData(points, selectedHole, toeSizeInMeters);
+	drawData(points, selectedHole);
 });
 const holeSlider = document.getElementById("holeSlider");
 holeSlider.addEventListener("input", function () {
@@ -1780,6 +1785,7 @@ holeSlider.addEventListener("input", function () {
 });
 // Access the slider element and add an event listener to track changes
 const connSlider = document.getElementById("connSlider");
+let connScale = parseFloat(connSlider.value);
 connSlider.addEventListener("input", function () {
 	////console.log('Connector value:', this.value);
 	connScale = document.getElementById("connSlider").value;
@@ -3731,6 +3737,31 @@ function delaunayTriangles(points, maxEdgeLength) {
 function clearCanvas() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
+
+function clearCanvasWithNotification() {
+	// Create and configure the modal
+	const clearModal = new SimpleModal({
+		modalId: "clearCanvasModal",
+		title: "Clear Canvas",
+		bodyText: "Are you sure? Continuing will clear the canvas. You will lose all unsaved data.",
+		type: "warning",
+		confirmText: "Yes",
+		cancelText: "No",
+		confirmCallback: function () {
+			clearCanvas();
+			clearLoadedData();
+		},
+		cancelCallback: function () {
+			// Do nothing on cancel
+			console.log("Canvas clearing canceled.");
+		}
+	});
+
+	// Create and show the modal
+	clearModal.createModal();
+	clearModal.show();
+}
+
 /*** CODE TO DRAW POINTS FROM KAD DATA ***/
 function drawKADPoints(x, y, z, strokeColour) {
 	ctx.beginPath();
@@ -8786,6 +8817,10 @@ function drawData(points, selectedHole) {
 	}
 }
 
+// Declare the variables at the top of your script
+let lastMouseX = 0;
+let lastMouseY = 0;
+
 function getMousePos(canvas, evt) {
 	var rect = canvas.getBoundingClientRect();
 	lastMouseX = evt.clientX;
@@ -8795,6 +8830,12 @@ function getMousePos(canvas, evt) {
 		y: evt.clientY - rect.top
 	};
 }
+
+// Register to the canvas to get mouse position
+canvas.addEventListener("mousemove", function (evt) {
+	var mousePos = getMousePos(canvas, evt);
+	//console.log("Mouse position: " + mousePos.x + "," + mousePos.y);
+});
 
 function openHelp() {
 	shell.open("https://blastingapps.com/kirrausermanual.html");
@@ -9119,62 +9160,76 @@ const darkModeToggle = document.getElementById("dark-mode-toggle");
 const body = document.body;
 const sidenavLeft = document.getElementById("sidenavLeft");
 const sidenavRight = document.getElementById("sidenavRight");
+//const canvas = document.getElementById("canvas");
+
 // Check if dark mode preference exists in local storage
 const darkModePref = localStorage.getItem("darkMode");
 if (darkModePref === "true") {
+	enableDarkMode();
+}
+
+// Function to enable dark mode
+function enableDarkMode() {
 	body.classList.add("dark-mode");
 	sidenavLeft.classList.add("dark-mode");
 	sidenavRight.classList.add("dark-mode");
 	canvas.classList.add("dark-canvas");
-	darkModeToggle.checked = true;
+	updateColours(true);
+	localStorage.setItem("darkMode", "true");
 }
 
-darkModeToggle.addEventListener("change", () => {
-	if (darkModeToggle.checked) {
-		body.classList.add("dark-mode");
-		sidenavLeft.classList.add("dark-mode");
-		sidenavRight.classList.add("dark-mode");
-		canvas.classList.add("dark-canvas");
-		localStorage.setItem("darkMode", "true");
-	} else {
-		body.classList.remove("dark-mode");
-		sidenavLeft.classList.remove("dark-mode");
-		sidenavRight.classList.remove("dark-mode");
-		canvas.classList.remove("dark-canvas");
-		localStorage.setItem("darkMode", "false");
-	}
-	darkModeEnabled = document.body.classList.contains("dark-mode");
-	transparentFillColour = darkModeEnabled ? "rgba(0, 128, 255, 0.3)" : "rgba(128, 255, 0, 0.3)";
-	fillColour = darkModeEnabled ? "darkgrey" : "lightgrey";
-	strokeColour = darkModeEnabled ? "white" : "black";
-	textFillColour = darkModeEnabled ? "white" : "black";
-	depthColour = darkModeEnabled ? "cyan" : "blue";
-	angleDipColour = darkModeEnabled ? "orange" : "darkorange";
+// Function to disable dark mode
+function disableDarkMode() {
+	body.classList.remove("dark-mode");
+	sidenavLeft.classList.remove("dark-mode");
+	sidenavRight.classList.remove("dark-mode");
+	canvas.classList.remove("dark-canvas");
+	updateColours(false);
+	localStorage.setItem("darkMode", "false");
+}
+
+// Function to update theme-specific colours and refresh UI
+function updateColours(isDarkMode) {
+	// Adjust fill, stroke, and text colours
+	transparentFillColour = isDarkMode ? "rgba(0, 128, 255, 0.3)" : "rgba(128, 255, 0, 0.3)";
+	fillColour = isDarkMode ? "darkgrey" : "lightgrey";
+	strokeColour = isDarkMode ? "white" : "black";
+	textFillColour = isDarkMode ? "white" : "black";
+	depthColour = isDarkMode ? "cyan" : "blue";
+	angleDipColour = isDarkMode ? "orange" : "darkorange";
+
+	// Redraw chart and canvas if applicable
 	if (Array.isArray(holeTimes)) {
 		timeChart();
 	}
 	drawData(points, selectedHole);
+}
+
+// Add click event listener for the dark mode toggle button
+darkModeToggle.addEventListener("click", () => {
+	const isDarkMode = body.classList.contains("dark-mode");
+	if (isDarkMode) {
+		disableDarkMode();
+	} else {
+		enableDarkMode();
+	}
 });
 
 window.addEventListener("load", () => {
-	const darkModeEnabled = localStorage.getItem("darkMode") === "true";
-	if (darkModeEnabled) {
-		darkModeToggle.checked = true;
-		body.classList.add("dark-mode");
-		sidenavLeft.classList.add("dark-mode");
-		canvas.classList.add("dark-canvas");
+	// Check if dark mode preference exists in local storage
+	const isDarkMode = localStorage.getItem("darkMode") === "true";
+	if (isDarkMode) {
+		disableDarkMode();
 	} else {
-		darkModeToggle.checked = false;
-		body.classList.remove("dark-mode");
-		sidenavLeft.classList.remove("dark-mode");
-		canvas.classList.remove("dark-canvas");
+		enableDarkMode();
 	}
-	transparentFillColour = darkModeEnabled ? "rgba(0, 128, 255, 0.3)" : "rgba(128, 255, 0, 0.3)";
-	fillColour = darkModeEnabled ? "darkgrey" : "lightgrey";
-	strokeColour = darkModeEnabled ? "white" : "black";
-	textFillColour = darkModeEnabled ? "white" : "black";
-	depthColour = darkModeEnabled ? "cyan" : "blue";
-	angleDipColour = darkModeEnabled ? "orange" : "darkorange";
+	// // Adjust fill, stroke, and text colours
+	// transparentFillColour = isDarkMode ? "rgba(0, 128, 255, 0.3)" : "rgba(128, 255, 0, 0.3)";
+	// fillColour = isDarkMode ? "darkgrey" : "lightgrey";
+	// strokeColour = isDarkMode ? "white" : "black";
+	// textFillColour = isDarkMode ? "white" : "black";
+	// depthColour = isDarkMode ? "cyan" : "blue";
+	// angleDipColour = isDarkMode ? "orange" : "darkorange";
 	clearCanvas();
 	checkLocalStorageData();
 });
@@ -9222,7 +9277,7 @@ function openNavLeft() {
 		body.style.marginLeft = "315px"; // Push body to the left
 		body.style.transition = "0.5s";
 		sidenavLeft.style.width = "300px";
-		sidenavLeft.style.paddingLeft = "5px";
+		sidenavLeft.style.paddingLeft = "0px";
 		sidenavLeft.style.paddingRight = "0px";
 		sidenavLeft.style.margin = "0px";
 	}
@@ -9236,12 +9291,14 @@ function closeNavLeft() {
 		sidenavLeft.style.top = "-5px";
 		sidenavLeft.style.width = "0px";
 		sidenavLeft.style.height = "0px";
+		sidenavLeft.style.zIndex = "10";
 	} else {
 		body.style.marginLeft = "0px";
 		body.style.transition = "0.5s";
 		sidenavLeft.style.width = "0px";
 		sidenavLeft.style.padding = "0px";
 		sidenavLeft.style.margin = "0px";
+		sidenavLeft.style.zIndex = "10";
 	}
 }
 
@@ -9267,7 +9324,7 @@ function openNavRight() {
 		sidenavRight.style.width = "300px";
 		sidenavRight.style.right = "0";
 		sidenavRight.style.paddingLeft = "0px";
-		sidenavRight.style.paddingRight = "5px";
+		sidenavRight.style.paddingRight = "0px";
 		sidenavRight.style.margin = "0px";
 		//resize the timechart
 		timeChart();
@@ -9286,14 +9343,22 @@ function closeNavRight() {
 		sidenavRight.style.top = "-5px";
 		sidenavRight.style.width = "0px";
 		sidenavRight.style.height = "0px";
+		sidenavRight.style.zIndex = "10";
 	} else {
 		body.style.marginRight = "0px"; // Reset the margin to default
 		body.style.transition = "0.5s";
 		sidenavRight.style.width = "0px";
 		sidenavRight.style.padding = "0px";
 		sidenavRight.style.margin = "0px";
+		sidenavRight.style.zIndex = "10";
 	}
 }
+
+window.openNavLeft = openNavLeft;
+window.closeNavLeft = closeNavLeft;
+window.openNavRight = openNavRight;
+window.closeNavRight = closeNavRight;
+
 // Using SweetAlert Library Create a popup that gets input from the user.
 function updatePopup() {
 	console.log("function updatePopup()");

@@ -1,0 +1,131 @@
+/* Ensure we import the theme for our custom properties */
+@import url('style-theme.css');
+
+/* The overall menubar container */
+.menubar {
+    background-color: var(--default-background-color);
+    /* If you have a “top bar” color different from primary, change it here */
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 8px;
+    /* Some horizontal padding */
+    height: 28px;
+    /* Typical menubar height */
+    /* You can tweak the height, or even remove it if you prefer auto-sizing */
+    border-bottom: 1px solid var(--light-mode-border);
+}
+
+body.dark-mode .menubar {
+    background-color: var(--dark-mode-color);
+    border-bottom: 1px solid var(--dark-mode-border);
+    transition: background-color 2s, color 2s;
+}
+
+/* The .menu holds all top-level menu items in one row. */
+.menu {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    /* Space between each top-level menu item */
+    position: relative;
+
+}
+
+/* Each top-level item, e.g. "File", "Edit", "Help" */
+.menu-item {
+    position: relative;
+    /* So the submenu can be absolutely positioned below */
+    cursor: default;
+    /* Looks like a regular menubar item on desktop */
+}
+
+/* The "title" text of the menu item */
+.menu-title {
+    color: var(--light-mode-text);
+    /* or var(--light-mode-text), depending on your theme usage */
+    font-family: var(--default-font);
+    font-size: 12px;
+    line-height: 28px;
+    /* Vertically center the text */
+    text-align: center;
+    padding: 2px 8px;
+    /* Remove default button styling, if any: */
+    background: none;
+    border-radius: 4px;
+    /* border: 1px solid var(--light-mode-border); */
+    text-decoration: none;
+    cursor: pointer;
+}
+
+body.dark-mode .menu-title {
+    color: var(--dark-mode-text);
+    /* transition: background-color 2s, color 2s; */
+}
+
+/* Hover effect on top-level item */
+.menu-item:hover .menu-title {
+    background-color: var(--mouseover-color);
+    color: var(--light-mode-text);
+    /* or your preferred color */
+}
+
+/* The dropdown that appears on hover */
+.menu-content {
+    display: none;
+    /* Hidden by default */
+    position: absolute;
+    top: 100%;
+    /* Sit just below the menu-title */
+    left: 0;
+    background-color: var(--default-background-color);
+    padding: 2px 0;
+    border: 1px solid var(--light-mode-border);
+    /* If you have a border color variable */
+    border-radius: 4px;
+    min-width: 150px;
+    z-index: 999;
+    /* Keep in front of other elements */
+}
+
+/* Show the submenu on hover */
+.menu-item:hover .menu-content {
+    display: block;
+
+}
+
+body.dark-mode .menu-content {
+    background-color: var(--dark-mode-color);
+    border: 1px solid var(--dark-mode-border);
+    /* transition: background-color 2s, color 2s; */
+}
+
+/* Submenu links */
+.menu-content a {
+    display: block;
+    font-family: var(--default-font);
+    font-size: 12px;
+    color: var(--light-mode-text);
+    text-decoration: none;
+    padding: 4px 12px;
+}
+
+body.dark-mode .menu-content a {
+    color: var(--dark-mode-text);
+    /* transition: background-color 2s, color 2s; */
+}
+
+/* Hover effect on submenu items */
+.menu-content a:hover {
+    background-color: var(--mouseover-color);
+    color: var(--light-mode-text);
+}
+
+body.dark-mode .menu-content a:hover {
+    color: var(--light-mode-text);
+}
+
+.hidden-file-input {
+    display: none;
+}
