@@ -488,7 +488,7 @@
 				</div>
 				<button class="accordion">Time Window</button>
 				<div class="panel">
-					<div class="chart-container" id="timeChart"></div>
+					<div class="chart-container" id="timeChartContainer"></div>
 					<a class="label4" id="timeRangeLabel">Time window : 8 ms</a>
 					<input type="range" min="1" max="25" value="8" id="timeRange" placeholder="Select time window size">
 				</div>
@@ -663,6 +663,8 @@
 			<div class="top-controls">
 				<div class="labelbig" onclick="openNavLeft()">&#9776;</div>
 				<div class="spacer"></div>
+				<div class="labelTranparent" id="worldCoordinates">X: 0.0 Y: 0.0</div>
+				<div class="spacer"></div>
 				<div class="labelbig" onclick="openNavRight()">&#9776;</div>
 			</div>
 
@@ -715,6 +717,12 @@
 		</div>
 		<!--END CANVAS AND MODE DISPLY BUTTONS-->
 
+		<div id="floating-toolbar">
+			<button class="toolbar-btn">🔍</button>
+			<button class="toolbar-btn">✏️</button>
+			<button class="toolbar-btn">❌</button>
+			<!-- Add more buttons as needed -->
+		</div>
 
 
 		<!-- Link to your JavaScript file -->

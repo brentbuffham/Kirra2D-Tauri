@@ -4,6 +4,7 @@
 
 //imports
 import SimpleModal from "./modals/simpleModal.js";
+import { delaunayTriangles, calculateTimes, updateSurfaceTimes, recalculateContours } from "./delaunayTools.js";
 
 const canvas = document.getElementById("canvas");
 const padding = 10; // add 10 pixels of padding
@@ -20,7 +21,7 @@ const canvasAdjustHeight = 0.12;
 canvas.width = document.documentElement.clientWidth - canvasAdjustWidth;
 canvas.height = document.documentElement.clientHeight - document.documentElement.clientHeight * canvasAdjustHeight;
 
-const timeChartObject = document.getElementById("timeChart");
+const timeChartObject = document.getElementById("timeChartContainer");
 //Plotly modebar button change
 /* var style = document.createElement("style");
 style.innerHTML = `
@@ -1450,7 +1451,7 @@ for (i = 0; i < acc.length; i++) {
 			panel.style.display = "block";
 			resizeChart(); // Call the resizeChart function to adjust the chart layout
 			timeChart();
-			//Plotly.relayout("timeChart", {
+			//Plotly.relayout("timeChartContainer", {
 			//	width: newWidthRight - 50
 			//});
 		}
@@ -1834,7 +1835,7 @@ timeSlider.addEventListener("input", function () {
 	timeRange = document.getElementById("timeRange").value;
 	timeRangeLabel.textContent = "Time window :" + timeRange + "ms";
 	timeChart();
-	Plotly.relayout("timeChart", {
+	Plotly.relayout("timeChartContainer", {
 		width: newWidthRight - 50
 	});
 });
@@ -1922,39 +1923,55 @@ function handleMouseDown(event) {
 	touchStartTime = Date.now();
 	touchDuration = 0; // Reset touch duration on touch start
 
-	// Set a timeout to trigger a long press event
 	longPressTimeout = setTimeout(() => {
 		isDragging = true; // Set isDragging to true after 500ms
 	}, longPressDuration);
 
-	// Continue handling the mouse down event as before
-	lastMouseX = event.clientX;
-	lastMouseY = event.clientY;
+	const { x, y } = getMousePos(event); // Get canvas coordinates
+	lastMouseX = x;
+	lastMouseY = y;
 }
 let newWidthRight = 350;
 let newWidthLeft = 350;
 
 function handleMouseMove(event) {
+	// console.log("Mouse Down: ", { isDragging, lastMouseX, lastMouseY });
+	// console.log("Mouse Move: ", { isDragging, deltaX, deltaY });
+	// console.log("Mouse Up: ", { isDragging });
+
 	if (isDragging) {
-		deltaX = event.clientX - lastMouseX;
-		deltaY = event.clientY - lastMouseY;
-		lastMouseX = event.clientX;
-		lastMouseY = event.clientY;
+		const { x, y } = getMousePos(event); // Get canvas coordinates
+		deltaX = x - lastMouseX;
+		deltaY = y - lastMouseY;
+		lastMouseX = x;
+		lastMouseY = y;
 		centroidX -= deltaX / currentScale;
 		centroidY += deltaY / currentScale;
 		drawData(points, selectedHole);
 	}
+
 	if (isResizingRight) {
-		newWidthRight = window.innerWidth - event.clientX;
-		Plotly.relayout("timeChart", {
+		const { x } = getMousePos(event); // Only need X for resizing
+		newWidthRight = window.innerWidth - x;
+		Plotly.relayout("timeChartContainer", {
 			width: newWidthRight - 50
 		});
 		document.getElementById("sidenavRight").style.width = newWidthRight + "px";
 	}
+
 	if (isResizingLeft) {
-		newWidthLeft = event.clientX;
+		const { x } = getMousePos(event); // Only need X for resizing
+		newWidthLeft = x;
 		document.getElementById("sidenavLeft").style.width = newWidthLeft + "px";
 	}
+	//update worldCoordinates label
+	let mousePos = getMousePos(event);
+	// Calculate world coordinates
+	const worldX = (mousePos.x - canvas.width / 2) / currentScale + centroidX;
+	const worldY = (canvas.height / 2 - mousePos.y) / currentScale + centroidY;
+	//console.log("Mouse position: " + mousePos.x + "," + mousePos.y);
+	document.getElementById("worldCoordinates").innerText = "X: " + worldX.toFixed(3) + ", Y:" + worldY.toFixed(3);
+	//drawMousePosition(ctx, mousePos.x, mousePos.y); //draw the mouse position on the canvas
 }
 
 function handleMouseUp(event) {
@@ -3354,88 +3371,88 @@ function calculateSHA256Checksum(data) {
 	return hash.toString();
 }
 
-function calculateTimes(points) {
-	//console.log("Calculating times...");
-	try {
-		const surfaces = {};
-		holeTimes = {};
+// function calculateTimes(points) {
+// 	//console.log("Calculating times...");
+// 	try {
+// 		const surfaces = {};
+// 		holeTimes = {};
 
-		// Build initial structures for surfaces and hole times
-		for (let i = 0; i < points.length; i++) {
-			const point = points[i];
-			if (point.entityName && point.holeID && !isNaN(point.timingDelayMilliseconds)) {
-				const combinedHoleID = `${point.entityName}:::${point.holeID}`;
-				const combinedFromHoleID = point.fromHoleID;
-				surfaces[combinedFromHoleID + ">=|=<" + combinedHoleID] = {
-					time: 0,
-					delay: point.timingDelayMilliseconds
-				};
+// 		// Build initial structures for surfaces and hole times
+// 		for (let i = 0; i < points.length; i++) {
+// 			const point = points[i];
+// 			if (point.entityName && point.holeID && !isNaN(point.timingDelayMilliseconds)) {
+// 				const combinedHoleID = `${point.entityName}:::${point.holeID}`;
+// 				const combinedFromHoleID = point.fromHoleID;
+// 				surfaces[combinedFromHoleID + ">=|=<" + combinedHoleID] = {
+// 					time: 0,
+// 					delay: point.timingDelayMilliseconds
+// 				};
 
-				holeTimes[combinedHoleID] = null;
-			} else {
-				console.log("Invalid point data:", point);
-			}
-		}
+// 				holeTimes[combinedHoleID] = null;
+// 			} else {
+// 				console.log("Invalid point data:", point);
+// 			}
+// 		}
 
-		// Calculate times for each surface
-		for (let i = 0; i < points.length; i++) {
-			const point = points[i];
-			const combinedHoleID = `${point.entityName}:::${point.holeID}`;
-			const combinedFromHoleID = point.fromHoleID;
-			if (combinedFromHoleID === combinedHoleID) {
-				if (holeTimes[combinedHoleID] === null || point.timingDelayMilliseconds < holeTimes[combinedHoleID]) {
-					holeTimes[combinedHoleID] = point.timingDelayMilliseconds;
-				}
-				updateSurfaceTimes(combinedHoleID, point.timingDelayMilliseconds, surfaces, holeTimes);
-			}
-		}
+// 		// Calculate times for each surface
+// 		for (let i = 0; i < points.length; i++) {
+// 			const point = points[i];
+// 			const combinedHoleID = `${point.entityName}:::${point.holeID}`;
+// 			const combinedFromHoleID = point.fromHoleID;
+// 			if (combinedFromHoleID === combinedHoleID) {
+// 				if (holeTimes[combinedHoleID] === null || point.timingDelayMilliseconds < holeTimes[combinedHoleID]) {
+// 					holeTimes[combinedHoleID] = point.timingDelayMilliseconds;
+// 				}
+// 				updateSurfaceTimes(combinedHoleID, point.timingDelayMilliseconds, surfaces, holeTimes);
+// 			}
+// 		}
 
-		// Log the final state of surfaces and holeTimes for debugging
-		//console.log("Final Surfaces:", surfaces);
-		//console.log("Final Hole Times:", holeTimes);
+// 		// Log the final state of surfaces and holeTimes for debugging
+// 		//console.log("Final Surfaces:", surfaces);
+// 		//console.log("Final Hole Times:", holeTimes);
 
-		// Create a result array from the holeTimes object
-		const result = [];
-		for (const combinedHoleID in holeTimes) {
-			result.push([combinedHoleID, holeTimes[combinedHoleID]]);
-		}
+// 		// Create a result array from the holeTimes object
+// 		const result = [];
+// 		for (const combinedHoleID in holeTimes) {
+// 			result.push([combinedHoleID, holeTimes[combinedHoleID]]);
+// 		}
 
-		// Update points with hole times
-		for (const [combinedHoleID, time] of result) {
-			const [entityName, holeID] = combinedHoleID.split(":::");
-			const pointIndex = points.findIndex((p) => p.entityName === entityName && p.holeID === holeID);
-			if (pointIndex !== -1) {
-				points[pointIndex].holeTime = time;
-			}
-		}
+// 		// Update points with hole times
+// 		for (const [combinedHoleID, time] of result) {
+// 			const [entityName, holeID] = combinedHoleID.split(":::");
+// 			const pointIndex = points.findIndex((p) => p.entityName === entityName && p.holeID === holeID);
+// 			if (pointIndex !== -1) {
+// 				points[pointIndex].holeTime = time;
+// 			}
+// 		}
 
-		return result;
-	} catch (err) {
-		console.log("Error in calculateTimes:", err);
-	}
-}
+// 		return result;
+// 	} catch (err) {
+// 		console.log("Error in calculateTimes:", err);
+// 	}
+// }
 
-function updateSurfaceTimes(combinedHoleID, time, surfaces, holeTimes, visited = new Set()) {
-	visited.add(combinedHoleID);
-	for (const id in surfaces) {
-		const [fromHoleID, toHoleID] = id.split(">=|=<");
-		if (fromHoleID === combinedHoleID) {
-			const surface = surfaces[id];
-			const delay = surface.delay;
-			if (!isNaN(delay)) {
-				const toTime = parseInt(time) + parseInt(delay);
-				if (!visited.has(toHoleID) && (toTime < surface.time || surface.time === 0)) {
-					surface.time = toTime;
-					holeTimes[toHoleID] = toTime;
-					updateSurfaceTimes(toHoleID, toTime, surfaces, holeTimes, visited);
-				}
-			} else {
-				console.log("Invalid delay:", delay, "for surface:", id);
-			}
-		}
-	}
-	visited.delete(combinedHoleID);
-}
+// function updateSurfaceTimes(combinedHoleID, time, surfaces, holeTimes, visited = new Set()) {
+// 	visited.add(combinedHoleID);
+// 	for (const id in surfaces) {
+// 		const [fromHoleID, toHoleID] = id.split(">=|=<");
+// 		if (fromHoleID === combinedHoleID) {
+// 			const surface = surfaces[id];
+// 			const delay = surface.delay;
+// 			if (!isNaN(delay)) {
+// 				const toTime = parseInt(time) + parseInt(delay);
+// 				if (!visited.has(toHoleID) && (toTime < surface.time || surface.time === 0)) {
+// 					surface.time = toTime;
+// 					holeTimes[toHoleID] = toTime;
+// 					updateSurfaceTimes(toHoleID, toTime, surfaces, holeTimes, visited);
+// 				}
+// 			} else {
+// 				console.log("Invalid delay:", delay, "for surface:", id);
+// 			}
+// 		}
+// 	}
+// 	visited.delete(combinedHoleID);
+// }
 // function delaunayContours(contourData, contourLevel, maxEdgeLength) {
 // 	// Filter out points where holeTime is null
 // 	const filteredContourData = contourData.filter(point => point.holeTime !== null);
@@ -3471,268 +3488,268 @@ function updateSurfaceTimes(combinedHoleID, time, surfaces, holeTimes, visited =
 
 // 	return contourLines;
 // }
-function delaunayContours(contourData, contourLevel, maxEdgeLength) {
-	// Filter out points where holeTime is null
-	const filteredContourData = contourData.filter((point) => point.holeTime !== null);
+// function delaunayContours(contourData, contourLevel, maxEdgeLength) {
+// 	// Filter out points where holeTime is null
+// 	const filteredContourData = contourData.filter((point) => point.holeTime !== null);
 
-	// Compute Delaunay triangulation
-	const delaunay = d3.Delaunay.from(filteredContourData.map((point) => [point.x, point.y]));
-	const triangles = delaunay.triangles; // Access the triangles property directly
+// 	// Compute Delaunay triangulation
+// 	const delaunay = d3.Delaunay.from(filteredContourData.map((point) => [point.x, point.y]));
+// 	const triangles = delaunay.triangles; // Access the triangles property directly
 
-	const contourLines = [];
-	directionArrows = []; // Initialize an array to store the arrows
+// 	const contourLines = [];
+// 	directionArrows = []; // Initialize an array to store the arrows
 
-	for (let i = 0; i < triangles.length; i += 3) {
-		const contourLine = [];
+// 	for (let i = 0; i < triangles.length; i += 3) {
+// 		const contourLine = [];
 
-		const p1 = contourData[triangles[i]];
-		const p2 = contourData[triangles[i + 1]];
-		const p3 = contourData[triangles[i + 2]];
+// 		const p1 = contourData[triangles[i]];
+// 		const p2 = contourData[triangles[i + 1]];
+// 		const p3 = contourData[triangles[i + 2]];
 
-		// Calculate the centroid of the triangle (average of x, y coordinates)
-		const centroidX = (p1.x + p2.x + p3.x) / 3;
-		const centroidY = (p1.y + p2.y + p3.y) / 3;
+// 		// Calculate the centroid of the triangle (average of x, y coordinates)
+// 		const centroidX = (p1.x + p2.x + p3.x) / 3;
+// 		const centroidY = (p1.y + p2.y + p3.y) / 3;
 
-		// Calculate the vector representing the slope (using Z differences)
-		// We'll calculate two vectors: p1->p2 and p1->p3 to get a slope direction
-		const v1X = p2.x - p1.x;
-		const v1Y = p2.y - p1.y;
-		const v1Z = p2.z - p1.z; // Time difference between p1 and p2
+// 		// Calculate the vector representing the slope (using Z differences)
+// 		// We'll calculate two vectors: p1->p2 and p1->p3 to get a slope direction
+// 		const v1X = p2.x - p1.x;
+// 		const v1Y = p2.y - p1.y;
+// 		const v1Z = p2.z - p1.z; // Time difference between p1 and p2
 
-		const v2X = p3.x - p1.x;
-		const v2Y = p3.y - p1.y;
-		const v2Z = p3.z - p1.z; // Time difference between p1 and p3
+// 		const v2X = p3.x - p1.x;
+// 		const v2Y = p3.y - p1.y;
+// 		const v2Z = p3.z - p1.z; // Time difference between p1 and p3
 
-		// Now we calculate the cross product of these two vectors to get the slope normal
-		const slopeX = v1Y * v2Z - v1Z * v2Y;
-		const slopeY = v1Z * v2X - v1X * v2Z;
-		const slopeZ = v1X * v2Y - v1Y * v2X;
+// 		// Now we calculate the cross product of these two vectors to get the slope normal
+// 		const slopeX = v1Y * v2Z - v1Z * v2Y;
+// 		const slopeY = v1Z * v2X - v1X * v2Z;
+// 		const slopeZ = v1X * v2Y - v1Y * v2X;
 
-		// Normalize the slope vector (we don't care about the Z component for 2D projection)
-		const slopeLength = Math.sqrt(slopeX * slopeX + slopeY * slopeY);
-		const normSlopeX = slopeX / slopeLength;
-		const normSlopeY = slopeY / slopeLength;
+// 		// Normalize the slope vector (we don't care about the Z component for 2D projection)
+// 		const slopeLength = Math.sqrt(slopeX * slopeX + slopeY * slopeY);
+// 		const normSlopeX = slopeX / slopeLength;
+// 		const normSlopeY = slopeY / slopeLength;
 
-		// Calculate the end point for the arrow based on the normalized slope
-		const arrowLength = 2; // Arrow length
-		const arrowEndX = centroidX - normSlopeX * firstMovementSize;
-		const arrowEndY = centroidY - normSlopeY * firstMovementSize;
+// 		// Calculate the end point for the arrow based on the normalized slope
+// 		const arrowLength = 2; // Arrow length
+// 		const arrowEndX = centroidX - normSlopeX * firstMovementSize;
+// 		const arrowEndY = centroidY - normSlopeY * firstMovementSize;
 
-		// Get the triangle's surface area
-		const surfaceArea = Math.abs((p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y)) / 2);
+// 		// Get the triangle's surface area
+// 		const surfaceArea = Math.abs((p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y)) / 2);
 
-		if (surfaceArea > 0.2) {
-			// Store the arrow (start at the centroid, end at the calculated slope direction)
-			directionArrows.push([centroidX, centroidY, arrowEndX, arrowEndY, "goldenrod", firstMovementSize]);
-		}
-		// Process the contour lines (unchanged logic)
-		for (let j = 0; j < 3; j++) {
-			const p1 = contourData[triangles[i + j]];
-			const p2 = contourData[triangles[i + ((j + 1) % 3)]];
+// 		if (surfaceArea > 0.2) {
+// 			// Store the arrow (start at the centroid, end at the calculated slope direction)
+// 			directionArrows.push([centroidX, centroidY, arrowEndX, arrowEndY, "goldenrod", firstMovementSize]);
+// 		}
+// 		// Process the contour lines (unchanged logic)
+// 		for (let j = 0; j < 3; j++) {
+// 			const p1 = contourData[triangles[i + j]];
+// 			const p2 = contourData[triangles[i + ((j + 1) % 3)]];
 
-			// Calculate distance between p1 and p2
-			const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+// 			// Calculate distance between p1 and p2
+// 			const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
 
-			// If the distance is larger than maxEdgeLength or contourLevel logic doesn't apply, skip
-			if (distance <= maxEdgeLength && ((p1.z < contourLevel && p2.z >= contourLevel) || (p1.z >= contourLevel && p2.z < contourLevel))) {
-				const point = interpolate(p1, p2, contourLevel);
-				contourLine.push(point);
-			}
-		}
+// 			// If the distance is larger than maxEdgeLength or contourLevel logic doesn't apply, skip
+// 			if (distance <= maxEdgeLength && ((p1.z < contourLevel && p2.z >= contourLevel) || (p1.z >= contourLevel && p2.z < contourLevel))) {
+// 				const point = interpolate(p1, p2, contourLevel);
+// 				contourLine.push(point);
+// 			}
+// 		}
 
-		if (contourLine.length === 2) {
-			contourLines.push(contourLine);
-		}
-	}
+// 		if (contourLine.length === 2) {
+// 			contourLines.push(contourLine);
+// 		}
+// 	}
 
-	const interval = 1; // Keep every arrow
-	directionArrows = directionArrows.filter((arrow, index) => index % interval === 0);
+// 	const interval = 1; // Keep every arrow
+// 	directionArrows = directionArrows.filter((arrow, index) => index % interval === 0);
 
-	// Return both contour lines and the newly created arrows
-	return { contourLines, directionArrows };
-}
+// 	// Return both contour lines and the newly created arrows
+// 	return { contourLines, directionArrows };
+// }
 
 //NOT IN USE - YET
-function delaunayContourBurdenRelief(contourData, maxEdgeLength, angleOfInitiation) {
-	// Filter out points where holeTime is null
-	const filteredContourData = contourData.filter((point) => point.holeTime !== null);
+// function delaunayContourBurdenRelief(contourData, maxEdgeLength, angleOfInitiation) {
+// 	// Filter out points where holeTime is null
+// 	const filteredContourData = contourData.filter((point) => point.holeTime !== null);
 
-	// Compute Delaunay triangulation
-	const delaunay = d3.Delaunay.from(filteredContourData.map((point) => [point.x, point.y]));
-	const triangles = delaunay.triangles; // Access the triangles property directly
+// 	// Compute Delaunay triangulation
+// 	const delaunay = d3.Delaunay.from(filteredContourData.map((point) => [point.x, point.y]));
+// 	const triangles = delaunay.triangles; // Access the triangles property directly
 
-	const reliefResults = [];
+// 	const reliefResults = [];
 
-	for (let i = 0; i < triangles.length; i += 3) {
-		const triangle = [contourData[triangles[i]], contourData[triangles[i + 1]], contourData[triangles[i + 2]]];
+// 	for (let i = 0; i < triangles.length; i += 3) {
+// 		const triangle = [contourData[triangles[i]], contourData[triangles[i + 1]], contourData[triangles[i + 2]]];
 
-		// Find the earliest and latest times
-		const earliestTime = Math.min(triangle[0].holeTime, triangle[1].holeTime, triangle[2].holeTime);
-		const latestTime = Math.max(triangle[0].holeTime, triangle[1].holeTime, triangle[2].holeTime);
+// 		// Find the earliest and latest times
+// 		const earliestTime = Math.min(triangle[0].holeTime, triangle[1].holeTime, triangle[2].holeTime);
+// 		const latestTime = Math.max(triangle[0].holeTime, triangle[1].holeTime, triangle[2].holeTime);
 
-		// Determine the points corresponding to the earliest and latest times
-		let p1, p2;
-		if (earliestTime === triangle[0].holeTime) {
-			p1 = triangle[0];
-		} else if (earliestTime === triangle[1].holeTime) {
-			p1 = triangle[1];
-		} else {
-			p1 = triangle[2];
-		}
+// 		// Determine the points corresponding to the earliest and latest times
+// 		let p1, p2;
+// 		if (earliestTime === triangle[0].holeTime) {
+// 			p1 = triangle[0];
+// 		} else if (earliestTime === triangle[1].holeTime) {
+// 			p1 = triangle[1];
+// 		} else {
+// 			p1 = triangle[2];
+// 		}
 
-		if (latestTime === triangle[0].holeTime) {
-			p2 = triangle[0];
-		} else if (latestTime === triangle[1].holeTime) {
-			p2 = triangle[1];
-		} else {
-			p2 = triangle[2];
-		}
+// 		if (latestTime === triangle[0].holeTime) {
+// 			p2 = triangle[0];
+// 		} else if (latestTime === triangle[1].holeTime) {
+// 			p2 = triangle[1];
+// 		} else {
+// 			p2 = triangle[2];
+// 		}
 
-		// Calculate the horizontal distance between p1 and p2
-		const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+// 		// Calculate the horizontal distance between p1 and p2
+// 		const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
 
-		// Project the distance along the angle of initiation
-		const projectedDistance = horizontalDistance / Math.cos(angleOfInitiation * (Math.PI / 180)); // Angle in radians
+// 		// Project the distance along the angle of initiation
+// 		const projectedDistance = horizontalDistance / Math.cos(angleOfInitiation * (Math.PI / 180)); // Angle in radians
 
-		// Calculate burden relief
-		const timeDifference = latestTime - earliestTime; // Time difference in ms
-		const burdenRelief = timeDifference / projectedDistance; // ms/m
+// 		// Calculate burden relief
+// 		const timeDifference = latestTime - earliestTime; // Time difference in ms
+// 		const burdenRelief = timeDifference / projectedDistance; // ms/m
 
-		// Store the results
-		reliefResults.push({
-			triangle: triangle, // The triangle points
-			burdenRelief: burdenRelief // Burden relief value
-		});
-	}
+// 		// Store the results
+// 		reliefResults.push({
+// 			triangle: triangle, // The triangle points
+// 			burdenRelief: burdenRelief // Burden relief value
+// 		});
+// 	}
 
-	return reliefResults;
-}
+// 	return reliefResults;
+// }
 
-function interpolate(p1, p2, contourLevel) {
-	const t = (contourLevel - p1.z) / (p2.z - p1.z);
-	return {
-		x: p1.x + t * (p2.x - p1.x),
-		y: p1.y + t * (p2.y - p1.y)
-	};
-}
+// function interpolate(p1, p2, contourLevel) {
+// 	const t = (contourLevel - p1.z) / (p2.z - p1.z);
+// 	return {
+// 		x: p1.x + t * (p2.x - p1.x),
+// 		y: p1.y + t * (p2.y - p1.y)
+// 	};
+// }
 
-function simplifyLine(line, epsilon) {
-	if (line.length <= 2) return line;
+// function simplifyLine(line, epsilon) {
+// 	if (line.length <= 2) return line;
 
-	const firstPoint = line[0];
-	const lastPoint = line[line.length - 1];
-	const lineDistSq = (lastPoint.x - firstPoint.x) ** 2 + (lastPoint.y - firstPoint.y) ** 2;
+// 	const firstPoint = line[0];
+// 	const lastPoint = line[line.length - 1];
+// 	const lineDistSq = (lastPoint.x - firstPoint.x) ** 2 + (lastPoint.y - firstPoint.y) ** 2;
 
-	const { maxDist, maxDistPoint } = line.slice(1, -1).reduce(
-		(result, point, i) => {
-			const distSq = pointToLineDistanceSq(point, firstPoint, lastPoint, lineDistSq);
-			if (distSq > result.maxDist) {
-				return {
-					maxDist: distSq,
-					maxDistPoint: {
-						index: i + 1,
-						point
-					}
-				};
-			}
-			return result;
-		},
-		{
-			maxDist: 0,
-			maxDistPoint: {
-				index: 0,
-				point: null
-			}
-		}
-	);
+// 	const { maxDist, maxDistPoint } = line.slice(1, -1).reduce(
+// 		(result, point, i) => {
+// 			const distSq = pointToLineDistanceSq(point, firstPoint, lastPoint, lineDistSq);
+// 			if (distSq > result.maxDist) {
+// 				return {
+// 					maxDist: distSq,
+// 					maxDistPoint: {
+// 						index: i + 1,
+// 						point
+// 					}
+// 				};
+// 			}
+// 			return result;
+// 		},
+// 		{
+// 			maxDist: 0,
+// 			maxDistPoint: {
+// 				index: 0,
+// 				point: null
+// 			}
+// 		}
+// 	);
 
-	if (Math.sqrt(maxDist) > epsilon) {
-		const left = simplifyLine(line.slice(0, maxDistPoint.index + 1), epsilon);
-		const right = simplifyLine(line.slice(maxDistPoint.index), epsilon);
+// 	if (Math.sqrt(maxDist) > epsilon) {
+// 		const left = simplifyLine(line.slice(0, maxDistPoint.index + 1), epsilon);
+// 		const right = simplifyLine(line.slice(maxDistPoint.index), epsilon);
 
-		return left.slice(0, left.length - 1).concat(right);
-	} else {
-		return [firstPoint, lastPoint];
-	}
-}
+// 		return left.slice(0, left.length - 1).concat(right);
+// 	} else {
+// 		return [firstPoint, lastPoint];
+// 	}
+// }
 
-function pointToLineDistanceSq(point, lineStart, lineEnd, lineDistSq) {
-	const t = ((point.x - lineStart.x) * (lineEnd.x - lineStart.x) + (point.y - lineStart.y) * (lineEnd.y - lineStart.y)) / lineDistSq;
+// function pointToLineDistanceSq(point, lineStart, lineEnd, lineDistSq) {
+// 	const t = ((point.x - lineStart.x) * (lineEnd.x - lineStart.x) + (point.y - lineStart.y) * (lineEnd.y - lineStart.y)) / lineDistSq;
 
-	if (t < 0) {
-		return (lineStart.x - point.x) ** 2 + (lineStart.y - point.y) ** 2;
-	} else if (t > 1) {
-		return (lineEnd.x - point.x) ** 2 + (lineEnd.y - point.y) ** 2;
-	} else {
-		const projX = lineStart.x + t * (lineEnd.x - lineStart.x);
-		const projY = lineStart.y + t * (lineEnd.y - lineStart.y);
-		return (point.x - projX) ** 2 + (point.y - projY) ** 2;
-	}
-}
+// 	if (t < 0) {
+// 		return (lineStart.x - point.x) ** 2 + (lineStart.y - point.y) ** 2;
+// 	} else if (t > 1) {
+// 		return (lineEnd.x - point.x) ** 2 + (lineEnd.y - point.y) ** 2;
+// 	} else {
+// 		const projX = lineStart.x + t * (lineEnd.x - lineStart.x);
+// 		const projY = lineStart.y + t * (lineEnd.y - lineStart.y);
+// 		return (point.x - projX) ** 2 + (point.y - projY) ** 2;
+// 	}
+// }
 
-/**
- * Function to generate a Delaunay triangulation from a set of 2D points, and
- * filter out triangles with edges that are longer than a specified maximum edge length.
- * @param {Array} points the set of 2D points to triangulate
- * @param {number} maxEdgeLength the maximum edge length to allow
- * @returns {Array} an array of triangles, where each triangle is an array of 3 points,
- * each point being an array of 3 numbers (x, y, z)
- */
-function delaunayTriangles(points, maxEdgeLength) {
-	let resultTriangles = [];
-	let reliefTriangles = [];
-	try {
-		const getX = (point) => parseFloat(point.startXLocation);
-		const getY = (point) => parseFloat(point.startYLocation);
+// /**
+//  * Function to generate a Delaunay triangulation from a set of 2D points, and
+//  * filter out triangles with edges that are longer than a specified maximum edge length.
+//  * @param {Array} points the set of 2D points to triangulate
+//  * @param {number} maxEdgeLength the maximum edge length to allow
+//  * @returns {Array} an array of triangles, where each triangle is an array of 3 points,
+//  * each point being an array of 3 numbers (x, y, z)
+//  */
+// function delaunayTriangles(points, maxEdgeLength) {
+// 	let resultTriangles = [];
+// 	let reliefTriangles = [];
+// 	try {
+// 		const getX = (point) => parseFloat(point.startXLocation);
+// 		const getY = (point) => parseFloat(point.startYLocation);
 
-		// Construct the Delaunay triangulation object
-		const delaunay = Delaunator.from(points, getX, getY);
+// 		// Construct the Delaunay triangulation object
+// 		const delaunay = Delaunator.from(points, getX, getY);
 
-		// Helper function to calculate the squared distance between two points
-		function distanceSquared(p1, p2) {
-			const dx = p1[0] - p2[0];
-			const dy = p1[1] - p2[1];
-			return dx * dx + dy * dy;
-		}
+// 		// Helper function to calculate the squared distance between two points
+// 		function distanceSquared(p1, p2) {
+// 			const dx = p1[0] - p2[0];
+// 			const dy = p1[1] - p2[1];
+// 			return dx * dx + dy * dy;
+// 		}
 
-		for (let i = 0; i < delaunay.triangles.length; i += 3) {
-			const p1Index = delaunay.triangles[i];
-			const p2Index = delaunay.triangles[i + 1];
-			const p3Index = delaunay.triangles[i + 2];
+// 		for (let i = 0; i < delaunay.triangles.length; i += 3) {
+// 			const p1Index = delaunay.triangles[i];
+// 			const p2Index = delaunay.triangles[i + 1];
+// 			const p3Index = delaunay.triangles[i + 2];
 
-			const p1 = points[p1Index];
-			const p2 = points[p2Index];
-			const p3 = points[p3Index];
+// 			const p1 = points[p1Index];
+// 			const p2 = points[p2Index];
+// 			const p3 = points[p3Index];
 
-			// Calculate squared edge lengths
-			const edge1Squared = distanceSquared([getX(p1), getY(p1)], [getX(p2), getY(p2)]);
-			const edge2Squared = distanceSquared([getX(p2), getY(p2)], [getX(p3), getY(p3)]);
-			const edge3Squared = distanceSquared([getX(p3), getY(p3)], [getX(p1), getY(p1)]);
+// 			// Calculate squared edge lengths
+// 			const edge1Squared = distanceSquared([getX(p1), getY(p1)], [getX(p2), getY(p2)]);
+// 			const edge2Squared = distanceSquared([getX(p2), getY(p2)], [getX(p3), getY(p3)]);
+// 			const edge3Squared = distanceSquared([getX(p3), getY(p3)], [getX(p1), getY(p1)]);
 
-			// Check if all edge lengths are less than or equal to the maxEdgeLength squared
-			if (edge1Squared <= maxEdgeLength ** 2 && edge2Squared <= maxEdgeLength ** 2 && edge3Squared <= maxEdgeLength ** 2) {
-				// Add the triangle to the result if the condition is met
+// 			// Check if all edge lengths are less than or equal to the maxEdgeLength squared
+// 			if (edge1Squared <= maxEdgeLength ** 2 && edge2Squared <= maxEdgeLength ** 2 && edge3Squared <= maxEdgeLength ** 2) {
+// 				// Add the triangle to the result if the condition is met
 
-				resultTriangles.push([
-					[getX(p1), getY(p1), p1.startZLocation], // [x, y, z] of point 1
-					[getX(p2), getY(p2), p2.startZLocation], // [x, y, z] of point 2
-					[getX(p3), getY(p3), p3.startZLocation] // [x, y, z] of point 3
-				]);
+// 				resultTriangles.push([
+// 					[getX(p1), getY(p1), p1.startZLocation], // [x, y, z] of point 1
+// 					[getX(p2), getY(p2), p2.startZLocation], // [x, y, z] of point 2
+// 					[getX(p3), getY(p3), p3.startZLocation] // [x, y, z] of point 3
+// 				]);
 
-				reliefTriangles.push([
-					[getX(p1), getY(p1), p1.holeTime], // [x, y, z] of point 1
-					[getX(p2), getY(p2), p2.holeTime], // [x, y, z] of point 2
-					[getX(p3), getY(p3), p3.holeTime] // [x, y, z] of point 3
-				]);
-			}
-		}
-		//console.log("Triangles", resultTriangles);
-		//console.log("Relief Triangles", reliefTriangles);
-		return { resultTriangles, reliefTriangles };
-	} catch (err) {
-		console.log(err);
-	}
-}
+// 				reliefTriangles.push([
+// 					[getX(p1), getY(p1), p1.holeTime], // [x, y, z] of point 1
+// 					[getX(p2), getY(p2), p2.holeTime], // [x, y, z] of point 2
+// 					[getX(p3), getY(p3), p3.holeTime] // [x, y, z] of point 3
+// 				]);
+// 			}
+// 		}
+// 		//console.log("Triangles", resultTriangles);
+// 		//console.log("Relief Triangles", reliefTriangles);
+// 		return { resultTriangles, reliefTriangles };
+// 	} catch (err) {
+// 		console.log(err);
+// 	}
+// }
 
 function clearCanvas() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -4477,8 +4494,8 @@ function getBurdenRelief(triangle) {
 	return burdenRelief;
 }
 
-function drawMousePosition(x, y) {
-	ctx.strokeStyle = strokeColour;
+function drawMousePosition(ctx, x, y) {
+	ctx.strokeStyle = "red";
 	ctx.beginPath();
 	ctx.rect(x - 7, y - 7, 14, 14);
 	ctx.lineWidth = 1;
@@ -4782,9 +4799,9 @@ function getJSColourHexDrawing() {
 
 function handleConnectorClick(event) {
 	// Get the click/touch coordinates relative to the canvas
-	const rect = canvas.getBoundingClientRect();
-	const clickX = event.clientX - rect.left;
-	const clickY = event.clientY - rect.top;
+	const mousePos = getMousePos(event);
+	const clickX = mousePos.x;
+	const clickY = mousePos.y;
 	const clickedHole = getClickedHole(clickX, clickY);
 	if (isAddingConnector) {
 		if (clickedHole) {
@@ -4942,11 +4959,15 @@ function getClickedPointInMap(map, clickX, clickY) {
 	return closestPoint;
 }
 
-function getClickedPoint(event) {
+function getClickedPoint(canvas, event) {
 	// get the values from clicking in the canvas
-	const rect = canvas.getBoundingClientRect();
-	let clickX = event.clientX - rect.left;
-	let clickY = event.clientY - rect.top;
+	// Get the click/touch coordinates relative to the canvas
+	// const rect = canvas.getBoundingClientRect();
+	// const clickX = event.clientX - rect.left;
+	// const clickY = event.clientY - rect.top;
+	const mousePos = getMousePos(event);
+	const clickX = mousePos.x;
+	const clickY = mousePos.y;
 	if (isNaN(event.clientX - rect.left) || isNaN(event.clientY - rect.top)) {
 		// Handle the case when the values are NaN
 		clickX = event.changedTouches[0].clientX - rect.left;
@@ -5298,9 +5319,12 @@ function deleteSelectedAllPatterns() {
 function handleHoleDeletingClick(event) {
 	if (isDeletingHole) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const { x, y } = getMousePos(event);
+		const clickX = x;
+		const clickY = y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -5343,7 +5367,7 @@ function renumberHolesFunction(startNumber, selectedEntityName) {
 	drawData(points, selectedHole);
 }
 
-function handleHoleAddingClick(event) {
+function handleHoleAddingClick(canvas, event) {
 	if (isAddingHole) {
 		// Get the click/touch coordinates relative to the canvas
 		//const rect = canvas.getBoundingClientRect();
@@ -5371,12 +5395,16 @@ function handleHoleAddingClick(event) {
 	}
 }
 
-function handleKADPointClick(event) {
+function handleKADPointClick(canvas, event) {
 	if (isDrawingPoint) {
-		// get the values from clicking in the canvas
-		const rect = canvas.getBoundingClientRect();
-		let clickX = event.clientX - rect.left;
-		let clickY = event.clientY - rect.top;
+		// Get the click/touch coordinates relative to the canvas
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
+
 		if (isNaN(event.clientX - rect.left) || isNaN(event.clientY - rect.top)) {
 			// Handle the case when the values are NaN
 			clickX = event.changedTouches[0].clientX - rect.left;
@@ -5436,12 +5464,16 @@ function addKADPoint() {
 	//console.log("kadPointsMap: ", kadPointsMap);
 }
 
-function handleKADLineClick(event) {
+function handleKADLineClick(canvas, event) {
 	if (isDrawingLine) {
-		// get the values from clicking in the canvas
-		const rect = canvas.getBoundingClientRect();
-		let clickX = event.clientX - rect.left;
-		let clickY = event.clientY - rect.top;
+		// Get the click/touch coordinates relative to the canvas
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
+
 		if (isNaN(event.clientX - rect.left) || isNaN(event.clientY - rect.top)) {
 			// Handle the case when the values are NaN
 			clickX = event.changedTouches[0].clientX - rect.left;
@@ -5502,12 +5534,16 @@ function addKADLine() {
 	console.log("kadLinesMap: ", kadLinesMap);
 }
 
-function handleKADPolyClick(event) {
+function handleKADPolyClick(canvas, event) {
 	if (isDrawingPoly) {
-		// get the values from clicking in the canvas
-		const rect = canvas.getBoundingClientRect();
-		let clickX = event.clientX - rect.left;
-		let clickY = event.clientY - rect.top;
+		// Get the click/touch coordinates relative to the canvas
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
+
 		if (isNaN(event.clientX - rect.left) || isNaN(event.clientY - rect.top)) {
 			// Handle the case when the values are NaN
 			clickX = event.changedTouches[0].clientX - rect.left;
@@ -5568,12 +5604,16 @@ function addKADPoly() {
 	console.log("kadPolygonsMap: ", kadPolygonsMap);
 }
 
-function handleKADCircleClick(event) {
+function handleKADCircleClick(canvas, event) {
 	if (isDrawingCircle) {
-		// get the values from clicking in the canvas
-		const rect = canvas.getBoundingClientRect();
-		let clickX = event.clientX - rect.left;
-		let clickY = event.clientY - rect.top;
+		// Get the click/touch coordinates relative to the canvas
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
+
 		if (isNaN(event.clientX - rect.left) || isNaN(event.clientY - rect.top)) {
 			// Handle the case when the values are NaN
 			clickX = event.changedTouches[0].clientX - rect.left;
@@ -5636,12 +5676,16 @@ function addKADCircle() {
 	console.log("kadCirclesMap: ", kadCirclesMap);
 }
 
-function handleKADTextClick(event) {
+function handleKADTextClick(canvas, event) {
 	if (isDrawingText) {
-		// get the values from clicking in the canvas
-		const rect = canvas.getBoundingClientRect();
-		let clickX = event.clientX - rect.left;
-		let clickY = event.clientY - rect.top;
+		// Get the click/touch coordinates relative to the canvas
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
+
 		if (isNaN(event.clientX - rect.left) || isNaN(event.clientY - rect.top)) {
 			// Handle the case when the values are NaN
 			clickX = event.changedTouches[0].clientX - rect.left;
@@ -6433,14 +6477,15 @@ function addHolePopup() {
 	});
 }
 
-function handlePatternAddingClick(event) {
+function handlePatternAddingClick(canvas, event) {
 	if (isAddingPattern) {
 		// Get the click/touch coordinates relative to the canvas
-		//const rect = canvas.getBoundingClientRect();
-		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		let clickX = event.clientX - rect.left;
-		let clickY = event.clientY - rect.top;
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		if (isNaN(event.clientX - rect.left) || isNaN(event.clientY - rect.top)) {
 			// Handle the case when the values are NaN
@@ -7121,11 +7166,16 @@ function measuredCommentPopup() {
 		}
 	});
 }
-function handleBlastNameClick(event) {
+function handleBlastNameClick(canvas, event) {
 	if (isBlastNameEditing) {
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
+		// Get the click/touch coordinates relative to the canvas
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
+
 		const clickedHole = getClickedHole(clickX, clickY);
 
 		if (clickedHole && editBlastNameSwitch.checked == false) {
@@ -7446,13 +7496,15 @@ function debugPoints(points) {
 	//////////////////////////////////////////////
 }
 
-function handleMeasuredLengthClick(event) {
+function handleMeasuredLengthClick(canvas, event) {
 	if (isMeasureRecording) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
-		//const measuredLengthTimeStamp = formatDate(new Date().toLocaleString());
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -7471,13 +7523,15 @@ function handleMeasuredLengthClick(event) {
 		}
 	}
 }
-function handleMeasuredMassClick(event) {
+function handleMeasuredMassClick(canvas, event) {
 	if (isMeasureRecording) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
-		//const measuredMassTimeStamp = formatDate(new Date().toLocaleString());
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -7496,13 +7550,15 @@ function handleMeasuredMassClick(event) {
 		}
 	}
 }
-function handleMeasuredCommentClick(event) {
+function handleMeasuredCommentClick(canvas, event) {
 	if (isMeasureRecording) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
-		//const measuredCommentTimeStamp = formatDate(new Date().toLocaleString());
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -7522,12 +7578,15 @@ function handleMeasuredCommentClick(event) {
 	}
 }
 
-function handleHoleTypeEditClick(event) {
+function handleHoleTypeEditClick(canvas, event) {
 	if (isTypeEditing) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -7547,12 +7606,15 @@ function handleHoleTypeEditClick(event) {
 	}
 }
 
-function handleHoleLengthEditClick(event) {
+function handleHoleLengthEditClick(canvas, event) {
 	if (isLengthEditing) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -7579,12 +7641,15 @@ function handleHoleLengthEditClick(event) {
 	}
 }
 
-function handleHoleDiameterEditClick(event) {
+function handleHoleDiameterEditClick(canvas, event) {
 	if (isDiameterEditing) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -7608,12 +7673,15 @@ function handleHoleDiameterEditClick(event) {
 	}
 }
 
-function handleAngleEditClick(event) {
+function handleAngleEditClick(canvas, event) {
 	if (isAngleEditing) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
 
@@ -7641,12 +7709,15 @@ function handleAngleEditClick(event) {
 	}
 }
 
-function handleBearingEditClick(event) {
+function handleBearingEditClick(canvas, event) {
 	if (isBearingEditing) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -7671,12 +7742,15 @@ function handleBearingEditClick(event) {
 	}
 }
 
-function handleEastingEditClick(event) {
+function handleEastingEditClick(canvas, event) {
 	if (isEastingEditing) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -7701,13 +7775,15 @@ function handleEastingEditClick(event) {
 	}
 }
 
-function handleNorthingEditClick(event) {
+function handleNorthingEditClick(canvas, event) {
 	if (isNorthingEditing) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
-
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
 
@@ -7730,12 +7806,15 @@ function handleNorthingEditClick(event) {
 	}
 }
 
-function handleElevationEditClick(event) {
+function handleElevationEditClick(canvas, event) {
 	if (isElevationEditing) {
 		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		const clickX = event.clientX - rect.left;
-		const clickY = event.clientY - rect.top;
+		// const rect = canvas.getBoundingClientRect();
+		// const clickX = event.clientX - rect.left;
+		// const clickY = event.clientY - rect.top;
+		const mousePos = getMousePos(event);
+		const clickX = mousePos.x;
+		const clickY = mousePos.y;
 
 		// Get the clicked hole
 		const clickedHole = getClickedHole(clickX, clickY);
@@ -7770,7 +7849,7 @@ function handleElevationEditClick(event) {
 // 			const [entityName, holeID] = holeTimes[i][0].split(":::");
 // 			const time = holeTimes[i][1];
 
-// 			const point = points.find(p => p.entityName === entityName && p.holeID === holeID);
+// 			const point = points.find((p) => p.entityName === entityName && p.holeID === holeID);
 
 // 			if (point) {
 // 				contourData.push({
@@ -7785,202 +7864,30 @@ function handleElevationEditClick(event) {
 // 			throw new Error("No valid contour data points found.");
 // 		}
 
-// 		const maxHoleTime = Math.max(...contourData.map(point => point.z));
-
-// 		// Initialize directionArrows array to store the arrows
-// 		directionArrows = [];
+// 		const maxHoleTime = Math.max(...contourData.map((point) => point.z));
 
 // 		// Calculate contour lines and store them in contourLinesArray
 // 		contourLinesArray = [];
+// 		directionArrows = [];
 // 		let interval = maxHoleTime < 350 ? 25 : maxHoleTime < 700 ? 100 : 250;
 // 		interval = parseInt(intervalAmount);
 
-// 		// Variable to store the previous contour line and the first contour line
-// 		let previousContourLine = null;
-// 		let firstContourLine = null;
-
 // 		// Iterate over contour levels
 // 		for (let contourLevel = 0; contourLevel <= maxHoleTime; contourLevel += interval) {
-// 			const contourLines = delaunayContours(contourData, contourLevel, maxEdgeLength);
+// 			const { contourLines, directionArrows } = delaunayContours(contourData, contourLevel, maxEdgeLength);
 // 			const epsilon = 1; // Adjust this value to control the level of simplification
-// 			const simplifiedContourLines = contourLines.map(line => simplifyLine(line, epsilon));
+// 			const simplifiedContourLines = contourLines.map((line) => simplifyLine(line, epsilon));
 // 			contourLinesArray.push(simplifiedContourLines);
 
-// 			// Handle the first contour line using Method 1
-// 			if (!firstContourLine) {
-// 				firstContourLine = simplifiedContourLines[0]; // Store the first contour line
-
-// 				for (const contourLine of simplifiedContourLines) {
-// 					for (let i = 0; i < contourLine.length - 1; i++) {
-// 						const p1 = contourLine[i];
-// 						const p2 = contourLine[i + 1];
-
-// 						// Calculate distance between points
-// 						//const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-
-// 						// Skip if p1 and p2 are too close (tiny segment)
-// 						const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-// 						if (distance < 0.01) continue;
-
-// 						// Place arrows every 2 meters along the contour line
-// 						if (distance >= 2) {
-// 							const numArrows = Math.floor(distance / 2);
-
-// 							for (let j = 0; j < numArrows; j++) {
-// 								const t = (j + 0.5) / numArrows; // Position along the contour line
-
-// 								const arrowStartX = p1.x + t * (p2.x - p1.x);
-// 								const arrowStartY = p1.y + t * (p2.y - p1.y);
-
-// 								// Calculate perpendicular direction for the arrow
-// 								let perpX = -(p1.y - p2.y);
-// 								let perpY = p1.x - p2.x;
-
-// 								// Normalize the perpendicular vector
-// 								const perpLength = Math.sqrt(perpX * perpX + perpY * perpY);
-// 								perpX /= perpLength;
-// 								perpY /= perpLength;
-
-// 								// Calculate end point of the arrow, proportional shift (25ms)
-// 								const arrowEndX = arrowStartX + perpX * (interval / (interval / 3));
-// 								const arrowEndY = arrowStartY + perpY * (interval / (interval / 3));
-
-// 								// Store the arrow parameters in the directionArrows array
-// 								directionArrows.push([arrowStartX, arrowStartY, arrowEndX, arrowEndY, "goldenrod", firstMovementSize]);
-// 							}
-// 						}
-// 					}
-// 				}
-// 			} else {
-// 				// Handle subsequent contour lines using Method 2 (nearest point on previous contour line)
-// 				for (const contourLine of simplifiedContourLines) {
-// 					for (let i = 0; i < contourLine.length - 1; i++) {
-// 						const p1 = contourLine[i];
-// 						const p2 = contourLine[i + 1];
-
-// 						// Calculate the distance between points on the current contour line
-// 						//const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-
-// 						// Skip if p1 and p2 are too close (tiny segment)
-// 						const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-// 						if (distance < 0.01) continue;
-
-// 						// Place arrows every 2 meters along the contour line
-// 						if (distance >= 2) {
-// 							const numArrows = Math.floor(distance / 2);
-
-// 							for (let j = 0; j < numArrows; j++) {
-// 								const t = (j + 0.5) / numArrows; // Position along the contour line
-
-// 								const arrowStartX = p1.x + t * (p2.x - p1.x);
-// 								const arrowStartY = p1.y + t * (p2.y - p1.y);
-
-// 								// Find the nearest point on the previous contour line
-// 								let nearestPoint = previousContourLine.reduce(
-// 									(nearest, current) => {
-// 										const dist = Math.sqrt(Math.pow(current.x - arrowStartX, 2) + Math.pow(current.y - arrowStartY, 2));
-// 										return dist < nearest.dist ? { point: current, dist: dist } : nearest;
-// 									},
-// 									{ point: null, dist: Infinity }
-// 								).point;
-
-// 								// Handle the case where nearestPoint is null
-// 								if (!nearestPoint) continue;
-
-// 								// Calculate the vector from the current contour line to the previous one
-// 								const dirX = nearestPoint.x - arrowStartX;
-// 								const dirY = nearestPoint.y - arrowStartY;
-
-// 								// Calculate the perpendicular vector to the current contour line (p1, p2)
-// 								let perpX = -(p2.y - p1.y);
-// 								let perpY = p2.x - p1.x;
-
-// 								// Normalize the perpendicular vector
-// 								const perpLength = Math.sqrt(perpX * perpX + perpY * perpY);
-// 								perpX /= perpLength;
-// 								perpY /= perpLength;
-
-// 								// Adjust the perpendicular vector to point in the direction of the previous contour line
-// 								const dotProduct = dirX * perpX + dirY * perpY;
-// 								if (dotProduct < 0) {
-// 									// Flip direction if pointing the wrong way
-// 									perpX = -perpX;
-// 									perpY = -perpY;
-// 								}
-
-// 								// Calculate end point of the arrow, proportional shift (25ms)
-// 								const arrowEndX = arrowStartX + perpX * (interval / (interval / 3));
-// 								const arrowEndY = arrowStartY + perpY * (interval / (interval / 3));
-
-// 								// Store the arrow parameters in the directionArrows array
-// 								directionArrows.push([arrowStartX, arrowStartY, arrowEndX, arrowEndY, "goldenrod", firstMovementSize]);
-// 							}
-// 						}
-// 					}
-// 				}
-// 			}
-
-// 			// Update previousContourLine for the next iteration, and ensure it's flattened if nested
-// 			previousContourLine = simplifiedContourLines.flat().filter(Boolean); // Avoid null points in contour lines
+// 			//console.log("contourLinesArray: ", contourLinesArray);
+// 			//console.log("directionArrows: ", directionArrows);
 // 		}
-
-// 		// Return both contour lines and direction arrows
+// 		// Return both contour lines
 // 		return { contourLinesArray, directionArrows };
 // 	} catch (err) {
 // 		console.error(err);
 // 	}
 // }
-
-function recalculateContours(points, deltaX, deltaY) {
-	try {
-		const contourData = [];
-		holeTimes = calculateTimes(points);
-		timeChart();
-
-		// Prepare contour data
-		for (let i = 0; i < holeTimes.length; i++) {
-			const [entityName, holeID] = holeTimes[i][0].split(":::");
-			const time = holeTimes[i][1];
-
-			const point = points.find((p) => p.entityName === entityName && p.holeID === holeID);
-
-			if (point) {
-				contourData.push({
-					x: point.startXLocation,
-					y: point.startYLocation,
-					z: time
-				});
-			}
-		}
-
-		if (contourData.length === 0) {
-			throw new Error("No valid contour data points found.");
-		}
-
-		const maxHoleTime = Math.max(...contourData.map((point) => point.z));
-
-		// Calculate contour lines and store them in contourLinesArray
-		contourLinesArray = [];
-		directionArrows = [];
-		let interval = maxHoleTime < 350 ? 25 : maxHoleTime < 700 ? 100 : 250;
-		interval = parseInt(intervalAmount);
-
-		// Iterate over contour levels
-		for (let contourLevel = 0; contourLevel <= maxHoleTime; contourLevel += interval) {
-			const { contourLines, directionArrows } = delaunayContours(contourData, contourLevel, maxEdgeLength);
-			const epsilon = 1; // Adjust this value to control the level of simplification
-			const simplifiedContourLines = contourLines.map((line) => simplifyLine(line, epsilon));
-			contourLinesArray.push(simplifiedContourLines);
-
-			//console.log("contourLinesArray: ", contourLinesArray);
-			//console.log("directionArrows: ", directionArrows);
-		}
-		// Return both contour lines
-		return { contourLinesArray, directionArrows };
-	} catch (err) {
-		console.error(err);
-	}
-}
 
 function calculateEndXYZ(clickedHole, newValue, modeLAB) {
 	let startX = clickedHole.startXLocation;
@@ -8096,7 +8003,7 @@ function calculateEndXYZ(clickedHole, newValue, modeLAB) {
 	};
 }
 
-function timeChart() {
+export function timeChart() {
 	if (Array.isArray(holeTimes)) {
 		const times = holeTimes.map((time) => time[1]);
 		const maxTime = Math.max(...times);
@@ -8231,10 +8138,10 @@ function timeChart() {
 			width: 280
 		};
 
-		Plotly.newPlot("timeChart", data, layout, config);
+		Plotly.newPlot("timeChartContainer", data, layout, config);
 
 		// Add click event listener to the plot
-		const chart = document.getElementById("timeChart");
+		const chart = document.getElementById("timeChartContainer");
 		// Outside of your event listener, define a variable to keep track of the last clicked index
 		let lastClickedIndex = null;
 		// Box and Lasso Selection Listener
@@ -8242,7 +8149,7 @@ function timeChart() {
 			if (eventData && eventData.points) {
 				const selectedPoints = eventData.points.map((p) => p.pointNumber);
 				const newColours = defaultColour.map((color, index) => (selectedPoints.includes(index) ? "lime" : color));
-				Plotly.restyle("timeChart", { "marker.color": [newColours] });
+				Plotly.restyle("timeChartContainer", { "marker.color": [newColours] });
 
 				timingWindowHolesSelected = selectedPoints
 					.flatMap((index) => {
@@ -8258,7 +8165,7 @@ function timeChart() {
 				console.log("Selected Holes:", timingWindowHolesSelected);
 				drawData(points, selectedHole);
 			} else {
-				Plotly.restyle("timeChart", { "marker.color": [defaultColour] });
+				Plotly.restyle("timeChartContainer", { "marker.color": [defaultColour] });
 				timingWindowHolesSelected = [];
 				drawData(points, selectedHole);
 			}
@@ -8280,7 +8187,7 @@ function timeChart() {
 				currentColors[clickedIndex] = clickedBarColor;
 
 				// Update the chart to reflect the new colors
-				Plotly.restyle("timeChart", { "marker.color": [currentColors] });
+				Plotly.restyle("timeChartContainer", { "marker.color": [currentColors] });
 
 				// Update lastClickedIndex
 				lastClickedIndex = clickedIndex;
@@ -8306,7 +8213,7 @@ function timeChart() {
 		// Reset Selection Event
 		chart.on("plotly_deselect", function () {
 			// Reset the bar colors to the default color
-			Plotly.restyle("timeChart", { "marker.color": [defaultColour] });
+			Plotly.restyle("timeChartContainer", { "marker.color": [defaultColour] });
 
 			// Clear any selected holes
 			timingWindowHolesSelected = [];
@@ -8619,11 +8526,14 @@ function drawData(points, selectedHole) {
 		}
 	}
 	if (points !== null) {
+		ctx.fillStyle = "red";
+		ctx.font = "12px Arial"; // Set the font size to 12pt Roboto-Regular
+		ctx.fillText("Holes Displayed: " + points.length, 10, canvas.height - 20);
 		for (let i = 0; i < points.length; i++) {
 			const point = points[i];
-			ctx.fillStyle = "red";
-			ctx.font = "18px Arial"; // Set the font size to 20px
-			ctx.fillText("Holes Displayed: " + points.length, 10, canvas.height - 20);
+			// ctx.fillStyle = "red";
+			// ctx.font = "18px Arial"; // Set the font size to 20px
+			// ctx.fillText("Holes Displayed: " + points.length, 10, canvas.height - 20);
 			const x = (points[i].startXLocation - centroidX) * currentScale + canvas.width / 2; // adjust x position
 			const y = (-points[i].startYLocation + centroidY) * currentScale + canvas.height / 2; // adjust y position
 			const lineStartX = x;
@@ -8821,21 +8731,37 @@ function drawData(points, selectedHole) {
 let lastMouseX = 0;
 let lastMouseY = 0;
 
-function getMousePos(canvas, evt) {
-	var rect = canvas.getBoundingClientRect();
-	lastMouseX = evt.clientX;
-	lastMouseY = evt.clientY;
+function getMousePos(evt) {
+	const rect = canvas.getBoundingClientRect();
+	const scaleX = canvas.width / rect.width;
+	const scaleY = canvas.height / rect.height;
+
 	return {
-		x: evt.clientX - rect.left,
-		y: evt.clientY - rect.top
+		x: (evt.clientX - rect.left) * scaleX,
+		y: (evt.clientY + rect.top) * scaleY
+	};
+}
+function getMouseWorldPos(canvas, evt) {
+	const { x, y } = getMousePos(evt);
+	const worldX = (x - canvas.width / 2) / currentScale + centroidX;
+	const worldY = (canvas.height / 2 - y) / currentScale + centroidY;
+
+	return {
+		x: worldX,
+		y: worldY
 	};
 }
 
-// Register to the canvas to get mouse position
-canvas.addEventListener("mousemove", function (evt) {
-	var mousePos = getMousePos(canvas, evt);
-	//console.log("Mouse position: " + mousePos.x + "," + mousePos.y);
-});
+// // Register to the canvas to get mouse position
+// canvas.addEventListener("mousemove", function (evt) {
+// 	let mousePos = getMousePos(evt);
+// 	// Calculate world coordinates
+// 	const worldX = (mousePos.x - canvas.width / 2) / currentScale + centroidX;
+// 	const worldY = (canvas.height / 2 - mousePos.y) / currentScale + centroidY;
+// 	//console.log("Mouse position: " + mousePos.x + "," + mousePos.y);
+// 	document.getElementById("worldCoordinates").innerText = "X: " + worldX.toFixed(3) + ", Y:" + worldY.toFixed(3);
+// 	//drawMousePosition(ctx, mousePos.x, mousePos.y); //draw the mouse position on the canvas
+// });
 
 function openHelp() {
 	shell.open("https://blastingapps.com/kirrausermanual.html");
@@ -9160,7 +9086,6 @@ const darkModeToggle = document.getElementById("dark-mode-toggle");
 const body = document.body;
 const sidenavLeft = document.getElementById("sidenavLeft");
 const sidenavRight = document.getElementById("sidenavRight");
-//const canvas = document.getElementById("canvas");
 
 // Check if dark mode preference exists in local storage
 const darkModePref = localStorage.getItem("darkMode");
@@ -9315,7 +9240,7 @@ function openNavRight() {
 		sidenavRight.style.width = "100%";
 		sidenavRight.style.height = "350px";
 		//resize the timechart
-		plotly.relayout("timeChart", {
+		plotly.relayout("timeChartContainer", {
 			width: 280
 		});
 	} else {
@@ -9329,7 +9254,7 @@ function openNavRight() {
 		//resize the timechart
 		timeChart();
 		newWidthRight = 315;
-		Plotly.relayout("timeChart", {
+		Plotly.relayout("timeChartContainer", {
 			width: newWidthRight - 50
 		});
 	}
@@ -9358,6 +9283,32 @@ window.openNavLeft = openNavLeft;
 window.closeNavLeft = closeNavLeft;
 window.openNavRight = openNavRight;
 window.closeNavRight = closeNavRight;
+
+const toolbar = document.getElementById("floating-toolbar");
+
+let isDraggingTools = false;
+let offsetX, offsetY;
+
+toolbar.addEventListener("mousedown", (e) => {
+	isDraggingTools = true;
+	offsetX = e.clientX - toolbar.getBoundingClientRect().left;
+	offsetY = e.clientY - toolbar.getBoundingClientRect().top;
+	toolbar.style.transition = "none"; // Disable smooth transition during dragging
+});
+
+document.addEventListener("mousemove", (e) => {
+	if (isDraggingTools) {
+		const x = e.clientX - offsetX;
+		const y = e.clientY - offsetY;
+		toolbar.style.left = `${x}px`;
+		toolbar.style.top = `${y}px`;
+	}
+});
+
+document.addEventListener("mouseup", () => {
+	isDraggingTools = false;
+	toolbar.style.transition = ""; // Re-enable smooth transition
+});
 
 // Using SweetAlert Library Create a popup that gets input from the user.
 function updatePopup() {
@@ -9435,5 +9386,6 @@ function updatePopup() {
 // Add an event listener for the "DOMContentLoaded" event
 document.addEventListener("DOMContentLoaded", function () {
 	// Call the updatePopup function when the page is fully loaded
-	updatePopup();
+	// uncomment to show popup
+	// updatePopup();
 });
