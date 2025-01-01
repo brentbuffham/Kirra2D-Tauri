@@ -5,6 +5,8 @@
 //imports
 import SimpleModal from "./modals/simpleModal.js";
 import { delaunayTriangles, calculateTimes, updateSurfaceTimes, recalculateContours } from "./delaunayTools.js";
+import { clearCanvas, drawData } from "./drawingData.js";
+import { timeChart, resizeChart } from "./chartsUsingPlotly.js";
 
 const canvas = document.getElementById("canvas");
 const padding = 10; // add 10 pixels of padding
@@ -38,30 +40,53 @@ let isResizingRight = false;
 const resizeLeft = document.getElementById("resizeHandleLeft");
 let isResizingLeft = false;
 
-const ctx = canvas.getContext("2d");
-let scale = 5; // adjust the scale to fit the points in the canvas
+export const ctx = canvas.getContext("2d");
+export let selectedPoint = null;
+// Create a Map for each entity type to store entities by name
+export const kadHolesMap = new Map();
+export const kadPointsMap = new Map();
+export const kadPolygonsMap = new Map();
+export const kadLinesMap = new Map();
+export const kadCirclesMap = new Map();
+export const kadTextsMap = new Map();
+
+export let centroidX = 0;
+export let centroidY = 0;
+export let centroidZ = 0;
+
 let fontSize = document.getElementById("fontSlider").value;
+let scale = 5; // adjust the scale to fit the points in the canvas
+
+export let currentScale = scale; // declare a variable to store the current scale
+export let currentFontSize = fontSize; // declare a variable to store the current fontsize
+//COLOURS
+export let noneColour = "rgba(0, 0, 0, 0)";
+export let darkModeEnabled = document.body.classList.contains("dark-mode");
+export let transparentFillColour = darkModeEnabled ? "rgba(0, 128, 255, 0.3)" : "rgba(128, 255, 0, 0.3)";
+export let fillColour = darkModeEnabled ? "lightgrey" : "darkgrey";
+export let strokeColour = darkModeEnabled ? "white" : "black";
+export let textFillColour = darkModeEnabled ? "white" : "black";
+export let depthColour = darkModeEnabled ? "blue" : "cyan";
+export let angleDipColour = darkModeEnabled ? "darkcyan" : "orange";
+
 let points = [];
 let dxfEntities = [];
 let countPoints = points.length;
 let sumMeters = 0;
-let currentScale = scale; // declare a variable to store the current scale
-let currentFontSize = fontSize; // declare a variable to store the current fontsize
+
 let toeScale = document.getElementById("toeSlider").value;
 let holeScale = document.getElementById("holeSlider").value;
-let deltaX = 0;
-let deltaY = 0;
-let centroidX = 0;
-let centroidY = 0;
-let centroidZ = 0;
+export let deltaX = 0;
+export let deltaY = 0;
+
 let firstPointInLine = null;
 // Variable to store the "fromHole" ID during connector mode
 let fromHoleStore = null;
-let isAddingConnector = false;
-let isAddingMultiConnector = false;
-let isAddingHole = false;
-let isAddingPattern = false;
-let isDeletingHole = false;
+export let isAddingConnector = false;
+export let isAddingMultiConnector = false;
+export let isAddingHole = false;
+export let isAddingPattern = false;
+export let isDeletingHole = false;
 let isMovingCanvas = false;
 let isDragging = false;
 // Function to add a point to the kadPointsMap
@@ -78,41 +103,41 @@ let minX;
 let minY;
 let worldX = null;
 let worldY = null;
-let contourLines = [];
-let contourLinesArray = [];
-let directionArrows = [];
-let epsilon = 1;
+
 let holeTimes = {};
+export function setHoleTimes(newData) {
+	holeTimes = newData;
+}
 let deleteRenumberStart = document.getElementById("deleteRenumberStart").value;
-let firstSelectedHole = null;
-let secondSelectedHole = null;
-let selectedHole = null;
-let isBlastNameEditing = false;
-let isLengthEditing = false;
-let isDiameterEditing = false;
-let isAngleEditing = false;
-let isBearingEditing = false;
-let isEastingEditing = false;
-let isNorthingEditing = false;
-let isElevationEditing = false;
-let isDisplayingContours = false;
-let isDisplayingSlopeTriangles = false;
-let isDisplayingReliefTriangles = false;
-let isDisplayingDirectionArrows = false;
-let isTypeEditing = false;
-let fixToeLocation = false;
+export let firstSelectedHole = null;
+export let secondSelectedHole = null;
+export let selectedHole = null;
+export let isBlastNameEditing = false;
+export let isLengthEditing = false;
+export let isDiameterEditing = false;
+export let isAngleEditing = false;
+export let isBearingEditing = false;
+export let isEastingEditing = false;
+export let isNorthingEditing = false;
+export let isElevationEditing = false;
+export let isDisplayingContours = false;
+export let isDisplayingSlopeTriangles = false;
+export let isDisplayingReliefTriangles = false;
+export let isDisplayingDirectionArrows = false;
+export let isTypeEditing = false;
+export let fixToeLocation = false;
 //drawing tool booleans
-let isDrawingPoint = false;
-let isDrawingLine = false;
-let isDrawingCircle = false;
-let isDrawingPoly = false;
-let isDrawingText = false;
+export let isDrawingPoint = false;
+export let isDrawingLine = false;
+export let isDrawingCircle = false;
+export let isDrawingPoly = false;
+export let isDrawingText = false;
 //delete tool booleans
-let isDeletingPoint = false;
-let isDeletingLine = false;
-let isDeletingCircle = false;
-let isDeletingPoly = false;
-let isDeletingText = false;
+export let isDeletingPoint = false;
+export let isDeletingLine = false;
+export let isDeletingCircle = false;
+export let isDeletingPoly = false;
+export let isDeletingText = false;
 //modify tool booleans
 let isModifyingPoint = false;
 let isModifyingCircle = false;
@@ -127,21 +152,18 @@ let hasSelectedMultipleHoles = false;
 let selectionMode = false; // Selection mode is set to single hole by default
 
 let maxEdgeLength = 15;
-let clickedHole; // Declare clickedHole outside the event listener
-let timingWindowHolesSelected = [];
-let selectedMultipleHoles = [];
-let isPlaying = false; // To track whether the animation is playing
+export let clickedHole; // Declare clickedHole outside the event listener
+export let timingWindowHolesSelected = [];
+//set function to set the timing window holes selected
+export function setTimingWindowHolesSelected(newData) {
+	timingWindowHolesSelected.length = 0; // Clear the array
+	timingWindowHolesSelected.push(...newData); // Add new data
+	console.log("timingWindowHolesSelected set to: " + timingWindowHolesSelected);
+}
+export let selectedMultipleHoles = [];
+export let isPlaying = false; // To track whether the animation is playing
 let animationInterval; // To store the interval ID for the animation
 let playSpeed = 1; // Default play speed
-//COLOURS
-let noneColour = "rgba(0, 0, 0, 0)";
-let darkModeEnabled = document.body.classList.contains("dark-mode");
-let transparentFillColour = darkModeEnabled ? "rgba(0, 128, 255, 0.3)" : "rgba(128, 255, 0, 0.3)";
-let fillColour = darkModeEnabled ? "lightgrey" : "darkgrey";
-let strokeColour = darkModeEnabled ? "white" : "black";
-let textFillColour = darkModeEnabled ? "white" : "black";
-let depthColour = darkModeEnabled ? "blue" : "cyan";
-let angleDipColour = darkModeEnabled ? "darkcyan" : "orange";
 
 //Switches
 const addConnectorButton = document.getElementById("addConnectorButton");
@@ -723,7 +745,7 @@ deleteHoleSwitch.addEventListener("change", function () {
 		if (points.length > 0) {
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 		}
@@ -740,7 +762,7 @@ deleteHoleSwitch.addEventListener("change", function () {
 		if (points.length > 0) {
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 		}
@@ -763,7 +785,7 @@ addHoleSwitch.addEventListener("change", function () {
 		canvas.addEventListener("touchstart", handleHoleAddingClick);
 		const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 		calculateTimes(points);
-		const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+		const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 		// directionArrows now contains the arrow data for later drawing
 
@@ -781,7 +803,7 @@ addHoleSwitch.addEventListener("change", function () {
 		if (points.length > 0) {
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 		}
@@ -809,7 +831,7 @@ addPatternSwitch.addEventListener("change", function () {
 		if (points.length > 0) {
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 		}
@@ -831,7 +853,7 @@ addPatternSwitch.addEventListener("change", function () {
 		if (points.length > 0) {
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 		}
@@ -1173,7 +1195,7 @@ editEastingSwitch.addEventListener("change", function () {
 		if (points.length > 0) {
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 		}
@@ -1233,7 +1255,7 @@ holeEastingSlider.addEventListener("input", function () {
 	if (points.length > 0) {
 		const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 		calculateTimes(points);
-		const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+		const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 		// directionArrows now contains the arrow data for later drawing
 	}
@@ -1267,7 +1289,7 @@ editNorthingSwitch.addEventListener("change", function () {
 		if (points.length > 0) {
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 		}
@@ -1328,7 +1350,7 @@ holeNorthingSlider.addEventListener("input", function () {
 	if (points.length > 0) {
 		const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 		calculateTimes(points);
-		const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+		const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 		// directionArrows now contains the arrow data for later drawing
 	}
@@ -1360,7 +1382,7 @@ editElevationSwitch.addEventListener("change", function () {
 		if (points.length > 0) {
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 		}
@@ -1420,20 +1442,12 @@ holeElevationSlider.addEventListener("input", function () {
 	if (points.length > 0) {
 		const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 		calculateTimes(points);
-		const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+		const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 		// directionArrows now contains the arrow data for later drawing
 	}
 });
 
-function resizeChart() {
-	if (Array.isArray(holeTimes)) {
-		const newWidth = document.documentElement.clientWidth;
-		Plotly.relayout(timeChartObject, {
-			width: newWidth
-		});
-	}
-}
 // Add event listener for window resize
 window.addEventListener("resize", resizeChart);
 var acc = document.getElementsByClassName("accordion");
@@ -1449,8 +1463,9 @@ for (i = 0; i < acc.length; i++) {
 			panel.style.display = "none";
 		} else {
 			panel.style.display = "block";
+			timeChart(holeTimes, points, selectedHole); // Call the timeChart function to draw the chart
 			resizeChart(); // Call the resizeChart function to adjust the chart layout
-			timeChart();
+
 			//Plotly.relayout("timeChartContainer", {
 			//	width: newWidthRight - 50
 			//});
@@ -1766,7 +1781,7 @@ canvasContainer.addEventListener(
 
 // Access the slider element and add an event listener to track changes
 const toeSlider = document.getElementById("toeSlider");
-let toeSizeInMeters = parseFloat(toeSlider.value);
+export let toeSizeInMeters = parseFloat(toeSlider.value);
 toeSlider.addEventListener("input", function () {
 	// Calculate the toe size in meters by using the slider value directly
 	toeSizeInMeters = parseFloat(this.value);
@@ -1805,7 +1820,7 @@ const intervalSlider = document.getElementById("intervalSlider");
 intervalSlider.addEventListener("input", function () {
 	intervalAmount = document.getElementById("intervalSlider").value;
 	intervalLabel.textContent = "Interval : " + intervalAmount + "ms";
-	const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+	const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 	// directionArrows now contains the arrow data for later drawing
 
@@ -1816,7 +1831,7 @@ const firstMovementSlider = document.getElementById("firstMovementSlider");
 firstMovementSlider.addEventListener("input", function () {
 	firstMovementSize = document.getElementById("firstMovementSlider").value;
 	firstMovementLabel.textContent = "First Movement Size : " + firstMovementSize;
-	const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+	const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 	// directionArrows now contains the arrow data for later drawing
 
@@ -1834,10 +1849,8 @@ timeSlider.addEventListener("input", function () {
 	////console.log('Connector value:', this.value);
 	timeRange = document.getElementById("timeRange").value;
 	timeRangeLabel.textContent = "Time window :" + timeRange + "ms";
-	timeChart();
-	Plotly.relayout("timeChartContainer", {
-		width: newWidthRight - 50
-	});
+	timeChart(holeTimes, points, selectedHole); // Call the timeChart function to draw the chart
+	resizeChart(); // Call the resizeChart function to adjust the chart layout
 });
 option1.addEventListener("change", function () {
 	drawData(points, selectedHole);
@@ -1974,6 +1987,16 @@ function handleMouseMove(event) {
 	//drawMousePosition(ctx, mousePos.x, mousePos.y); //draw the mouse position on the canvas
 }
 
+function getTouchPos(event) {
+	const rect = canvas.getBoundingClientRect();
+	const scaleX = canvas.width / rect.width;
+	const scaleY = canvas.height / rect.height;
+	return {
+		x: (event.touches[0].clientX - rect.left) * scaleX,
+		y: (event.touches[0].clientY - rect.top) * scaleY
+	};
+}
+
 function handleMouseUp(event) {
 	isDragging = false;
 	clearTimeout(longPressTimeout); // Clear the long press timeout
@@ -1981,39 +2004,31 @@ function handleMouseUp(event) {
 	//touchDuration = Date.now() - touchStartTime;
 
 	if (isAddingHole && touchDuration <= longPressDuration) {
-		// Short click behavior
-		touchStartX = event.clientX;
-		touchStartY = event.clientY;
+		const { touchStartX, touchStartY } = getMousePos(event);
 		addHolePopup();
 	}
 	if (isAddingPattern && touchDuration <= longPressDuration) {
-		touchStartX = event.clientX;
-		touchStartY = event.clientY;
+		const { touchStartX, touchStartY } = getMousePos(event);
 		// Log the values of worldX and worldY
 	}
 	if (isDrawingPoint && touchDuration <= longPressDuration) {
-		touchStartX = event.clientX;
-		touchStartY = event.clientY;
+		const { touchStartX, touchStartY } = getMousePos(event);
 		// Log the values of worldX and worldY
 	}
 	if (isDrawingLine && touchDuration <= longPressDuration) {
-		touchStartX = event.clientX;
-		touchStartY = event.clientY;
+		const { touchStartX, touchStartY } = getMousePos(event);
 		// Log the values of worldX and worldY
 	}
 	if (isDrawingPoly && touchDuration <= longPressDuration) {
-		touchStartX = event.clientX;
-		touchStartY = event.clientY;
+		const { touchStartX, touchStartY } = getMousePos(event);
 		// Log the values of worldX and worldY
 	}
 	if (isDrawingCircle && touchDuration <= longPressDuration) {
-		touchStartX = event.clientX;
-		touchStartY = event.clientY;
+		const { touchStartX, touchStartY } = getMousePos(event);
 		// Log the values of worldX and worldY
 	}
 	if (isDrawingText && touchDuration <= longPressDuration) {
-		touchStartX = event.clientX;
-		touchStartY = event.clientY;
+		const { touchStartX, touchStartY } = getMousePos(event);
 		// Log the values of worldX and worldY
 	}
 	isResizingRight = false;
@@ -2184,7 +2199,7 @@ async function handleFileUpload(event) {
 			centroidX = sumX / points.length;
 			centroidY = sumY / points.length;
 			try {
-				const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+				const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 				// directionArrows now contains the arrow data for later drawing
 
@@ -2663,7 +2678,9 @@ function parseCSV(data, blastNameValue) {
 	return points;
 }
 function fileFormatPopup(error) {
-	console.log("File format error");
+	console.log("File format error" + error.message);
+	console.log("File format error:", error.stack);
+
 	Swal.fire({
 		title: `Error ${error}`,
 		showCancelButton: false,
@@ -2691,13 +2708,6 @@ function fileFormatPopup(error) {
 	});
 	return; // Exit the function
 }
-// Create a Map for each entity type to store entities by name
-const kadHolesMap = new Map();
-const kadPointsMap = new Map();
-const kadPolygonsMap = new Map();
-const kadLinesMap = new Map();
-const kadCirclesMap = new Map();
-const kadTextsMap = new Map();
 
 // ???.kad files are kirra app native files that contain blast hole data and drawing data
 
@@ -3327,434 +3337,6 @@ function convertPointsToIREDESXML(points, filename, planID, siteID, holeOptions,
 	return xml;
 }
 
-function crc32(str) {
-	const table = new Uint32Array(256);
-	for (let i = 256; i--; ) {
-		let tmp = i;
-		for (let k = 8; k--; ) {
-			tmp = tmp & 1 ? 3988292384 ^ (tmp >>> 1) : tmp >>> 1;
-		}
-		table[i] = tmp;
-	}
-
-	let crc = 0xffffffff; // Initialize with all bits set to 1 (equivalent to -1)
-	for (let i = 0, l = str.length; i < l; i++) {
-		crc = (crc >>> 8) ^ table[(crc ^ str.charCodeAt(i)) & 255];
-	}
-
-	// Ensure it's a 32-bit unsigned integer (force it to be positive)
-	crc = crc >>> 0;
-
-	// Return the CRC32 as a string
-	return crc.toString(10);
-}
-
-function decimalChecksum(str) {
-	let checksum = 0;
-	for (let i = 0; i < str.length; i++) {
-		checksum += str.charCodeAt(i);
-	}
-	return checksum;
-}
-function calculateMD5Checksum(data) {
-	const hash = CryptoJS.MD5(data);
-	return hash.toString();
-}
-
-function calculateSHA1Checksum(data) {
-	const hash = CryptoJS.SHA1(data);
-	return hash.toString();
-}
-
-function calculateSHA256Checksum(data) {
-	const hash = CryptoJS.SHA256(data);
-	return hash.toString();
-}
-
-// function calculateTimes(points) {
-// 	//console.log("Calculating times...");
-// 	try {
-// 		const surfaces = {};
-// 		holeTimes = {};
-
-// 		// Build initial structures for surfaces and hole times
-// 		for (let i = 0; i < points.length; i++) {
-// 			const point = points[i];
-// 			if (point.entityName && point.holeID && !isNaN(point.timingDelayMilliseconds)) {
-// 				const combinedHoleID = `${point.entityName}:::${point.holeID}`;
-// 				const combinedFromHoleID = point.fromHoleID;
-// 				surfaces[combinedFromHoleID + ">=|=<" + combinedHoleID] = {
-// 					time: 0,
-// 					delay: point.timingDelayMilliseconds
-// 				};
-
-// 				holeTimes[combinedHoleID] = null;
-// 			} else {
-// 				console.log("Invalid point data:", point);
-// 			}
-// 		}
-
-// 		// Calculate times for each surface
-// 		for (let i = 0; i < points.length; i++) {
-// 			const point = points[i];
-// 			const combinedHoleID = `${point.entityName}:::${point.holeID}`;
-// 			const combinedFromHoleID = point.fromHoleID;
-// 			if (combinedFromHoleID === combinedHoleID) {
-// 				if (holeTimes[combinedHoleID] === null || point.timingDelayMilliseconds < holeTimes[combinedHoleID]) {
-// 					holeTimes[combinedHoleID] = point.timingDelayMilliseconds;
-// 				}
-// 				updateSurfaceTimes(combinedHoleID, point.timingDelayMilliseconds, surfaces, holeTimes);
-// 			}
-// 		}
-
-// 		// Log the final state of surfaces and holeTimes for debugging
-// 		//console.log("Final Surfaces:", surfaces);
-// 		//console.log("Final Hole Times:", holeTimes);
-
-// 		// Create a result array from the holeTimes object
-// 		const result = [];
-// 		for (const combinedHoleID in holeTimes) {
-// 			result.push([combinedHoleID, holeTimes[combinedHoleID]]);
-// 		}
-
-// 		// Update points with hole times
-// 		for (const [combinedHoleID, time] of result) {
-// 			const [entityName, holeID] = combinedHoleID.split(":::");
-// 			const pointIndex = points.findIndex((p) => p.entityName === entityName && p.holeID === holeID);
-// 			if (pointIndex !== -1) {
-// 				points[pointIndex].holeTime = time;
-// 			}
-// 		}
-
-// 		return result;
-// 	} catch (err) {
-// 		console.log("Error in calculateTimes:", err);
-// 	}
-// }
-
-// function updateSurfaceTimes(combinedHoleID, time, surfaces, holeTimes, visited = new Set()) {
-// 	visited.add(combinedHoleID);
-// 	for (const id in surfaces) {
-// 		const [fromHoleID, toHoleID] = id.split(">=|=<");
-// 		if (fromHoleID === combinedHoleID) {
-// 			const surface = surfaces[id];
-// 			const delay = surface.delay;
-// 			if (!isNaN(delay)) {
-// 				const toTime = parseInt(time) + parseInt(delay);
-// 				if (!visited.has(toHoleID) && (toTime < surface.time || surface.time === 0)) {
-// 					surface.time = toTime;
-// 					holeTimes[toHoleID] = toTime;
-// 					updateSurfaceTimes(toHoleID, toTime, surfaces, holeTimes, visited);
-// 				}
-// 			} else {
-// 				console.log("Invalid delay:", delay, "for surface:", id);
-// 			}
-// 		}
-// 	}
-// 	visited.delete(combinedHoleID);
-// }
-// function delaunayContours(contourData, contourLevel, maxEdgeLength) {
-// 	// Filter out points where holeTime is null
-// 	const filteredContourData = contourData.filter(point => point.holeTime !== null);
-
-// 	// Compute Delaunay triangulation
-// 	const delaunay = d3.Delaunay.from(filteredContourData.map(point => [point.x, point.y]));
-// 	const triangles = delaunay.triangles; // Access the triangles property directly
-
-// 	const contourLines = [];
-
-// 	for (let i = 0; i < triangles.length; i += 3) {
-// 		const contourLine = [];
-
-// 		for (let j = 0; j < 3; j++) {
-// 			const p1 = contourData[triangles[i + j]];
-// 			const p2 = contourData[triangles[i + (j + 1) % 3]];
-
-// 			// Calculate distance between p1 and p2
-// 			const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-// 			//If the distance is larger than 20 don't draw the line.
-// 			if (distance <= maxEdgeLength && ((p1.z < contourLevel && p2.z >= contourLevel) || (p1.z >= contourLevel && p2.z < contourLevel))) {
-// 				const point = interpolate(p1, p2, contourLevel);
-// 				contourLine.push(point);
-// 			}
-// 		}
-
-// 		if (contourLine.length === 2) {
-// 			contourLines.push(contourLine);
-// 		}
-// 	}
-
-// 	//console.log(contourLines);
-
-// 	return contourLines;
-// }
-// function delaunayContours(contourData, contourLevel, maxEdgeLength) {
-// 	// Filter out points where holeTime is null
-// 	const filteredContourData = contourData.filter((point) => point.holeTime !== null);
-
-// 	// Compute Delaunay triangulation
-// 	const delaunay = d3.Delaunay.from(filteredContourData.map((point) => [point.x, point.y]));
-// 	const triangles = delaunay.triangles; // Access the triangles property directly
-
-// 	const contourLines = [];
-// 	directionArrows = []; // Initialize an array to store the arrows
-
-// 	for (let i = 0; i < triangles.length; i += 3) {
-// 		const contourLine = [];
-
-// 		const p1 = contourData[triangles[i]];
-// 		const p2 = contourData[triangles[i + 1]];
-// 		const p3 = contourData[triangles[i + 2]];
-
-// 		// Calculate the centroid of the triangle (average of x, y coordinates)
-// 		const centroidX = (p1.x + p2.x + p3.x) / 3;
-// 		const centroidY = (p1.y + p2.y + p3.y) / 3;
-
-// 		// Calculate the vector representing the slope (using Z differences)
-// 		// We'll calculate two vectors: p1->p2 and p1->p3 to get a slope direction
-// 		const v1X = p2.x - p1.x;
-// 		const v1Y = p2.y - p1.y;
-// 		const v1Z = p2.z - p1.z; // Time difference between p1 and p2
-
-// 		const v2X = p3.x - p1.x;
-// 		const v2Y = p3.y - p1.y;
-// 		const v2Z = p3.z - p1.z; // Time difference between p1 and p3
-
-// 		// Now we calculate the cross product of these two vectors to get the slope normal
-// 		const slopeX = v1Y * v2Z - v1Z * v2Y;
-// 		const slopeY = v1Z * v2X - v1X * v2Z;
-// 		const slopeZ = v1X * v2Y - v1Y * v2X;
-
-// 		// Normalize the slope vector (we don't care about the Z component for 2D projection)
-// 		const slopeLength = Math.sqrt(slopeX * slopeX + slopeY * slopeY);
-// 		const normSlopeX = slopeX / slopeLength;
-// 		const normSlopeY = slopeY / slopeLength;
-
-// 		// Calculate the end point for the arrow based on the normalized slope
-// 		const arrowLength = 2; // Arrow length
-// 		const arrowEndX = centroidX - normSlopeX * firstMovementSize;
-// 		const arrowEndY = centroidY - normSlopeY * firstMovementSize;
-
-// 		// Get the triangle's surface area
-// 		const surfaceArea = Math.abs((p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y)) / 2);
-
-// 		if (surfaceArea > 0.2) {
-// 			// Store the arrow (start at the centroid, end at the calculated slope direction)
-// 			directionArrows.push([centroidX, centroidY, arrowEndX, arrowEndY, "goldenrod", firstMovementSize]);
-// 		}
-// 		// Process the contour lines (unchanged logic)
-// 		for (let j = 0; j < 3; j++) {
-// 			const p1 = contourData[triangles[i + j]];
-// 			const p2 = contourData[triangles[i + ((j + 1) % 3)]];
-
-// 			// Calculate distance between p1 and p2
-// 			const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-
-// 			// If the distance is larger than maxEdgeLength or contourLevel logic doesn't apply, skip
-// 			if (distance <= maxEdgeLength && ((p1.z < contourLevel && p2.z >= contourLevel) || (p1.z >= contourLevel && p2.z < contourLevel))) {
-// 				const point = interpolate(p1, p2, contourLevel);
-// 				contourLine.push(point);
-// 			}
-// 		}
-
-// 		if (contourLine.length === 2) {
-// 			contourLines.push(contourLine);
-// 		}
-// 	}
-
-// 	const interval = 1; // Keep every arrow
-// 	directionArrows = directionArrows.filter((arrow, index) => index % interval === 0);
-
-// 	// Return both contour lines and the newly created arrows
-// 	return { contourLines, directionArrows };
-// }
-
-//NOT IN USE - YET
-// function delaunayContourBurdenRelief(contourData, maxEdgeLength, angleOfInitiation) {
-// 	// Filter out points where holeTime is null
-// 	const filteredContourData = contourData.filter((point) => point.holeTime !== null);
-
-// 	// Compute Delaunay triangulation
-// 	const delaunay = d3.Delaunay.from(filteredContourData.map((point) => [point.x, point.y]));
-// 	const triangles = delaunay.triangles; // Access the triangles property directly
-
-// 	const reliefResults = [];
-
-// 	for (let i = 0; i < triangles.length; i += 3) {
-// 		const triangle = [contourData[triangles[i]], contourData[triangles[i + 1]], contourData[triangles[i + 2]]];
-
-// 		// Find the earliest and latest times
-// 		const earliestTime = Math.min(triangle[0].holeTime, triangle[1].holeTime, triangle[2].holeTime);
-// 		const latestTime = Math.max(triangle[0].holeTime, triangle[1].holeTime, triangle[2].holeTime);
-
-// 		// Determine the points corresponding to the earliest and latest times
-// 		let p1, p2;
-// 		if (earliestTime === triangle[0].holeTime) {
-// 			p1 = triangle[0];
-// 		} else if (earliestTime === triangle[1].holeTime) {
-// 			p1 = triangle[1];
-// 		} else {
-// 			p1 = triangle[2];
-// 		}
-
-// 		if (latestTime === triangle[0].holeTime) {
-// 			p2 = triangle[0];
-// 		} else if (latestTime === triangle[1].holeTime) {
-// 			p2 = triangle[1];
-// 		} else {
-// 			p2 = triangle[2];
-// 		}
-
-// 		// Calculate the horizontal distance between p1 and p2
-// 		const horizontalDistance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-
-// 		// Project the distance along the angle of initiation
-// 		const projectedDistance = horizontalDistance / Math.cos(angleOfInitiation * (Math.PI / 180)); // Angle in radians
-
-// 		// Calculate burden relief
-// 		const timeDifference = latestTime - earliestTime; // Time difference in ms
-// 		const burdenRelief = timeDifference / projectedDistance; // ms/m
-
-// 		// Store the results
-// 		reliefResults.push({
-// 			triangle: triangle, // The triangle points
-// 			burdenRelief: burdenRelief // Burden relief value
-// 		});
-// 	}
-
-// 	return reliefResults;
-// }
-
-// function interpolate(p1, p2, contourLevel) {
-// 	const t = (contourLevel - p1.z) / (p2.z - p1.z);
-// 	return {
-// 		x: p1.x + t * (p2.x - p1.x),
-// 		y: p1.y + t * (p2.y - p1.y)
-// 	};
-// }
-
-// function simplifyLine(line, epsilon) {
-// 	if (line.length <= 2) return line;
-
-// 	const firstPoint = line[0];
-// 	const lastPoint = line[line.length - 1];
-// 	const lineDistSq = (lastPoint.x - firstPoint.x) ** 2 + (lastPoint.y - firstPoint.y) ** 2;
-
-// 	const { maxDist, maxDistPoint } = line.slice(1, -1).reduce(
-// 		(result, point, i) => {
-// 			const distSq = pointToLineDistanceSq(point, firstPoint, lastPoint, lineDistSq);
-// 			if (distSq > result.maxDist) {
-// 				return {
-// 					maxDist: distSq,
-// 					maxDistPoint: {
-// 						index: i + 1,
-// 						point
-// 					}
-// 				};
-// 			}
-// 			return result;
-// 		},
-// 		{
-// 			maxDist: 0,
-// 			maxDistPoint: {
-// 				index: 0,
-// 				point: null
-// 			}
-// 		}
-// 	);
-
-// 	if (Math.sqrt(maxDist) > epsilon) {
-// 		const left = simplifyLine(line.slice(0, maxDistPoint.index + 1), epsilon);
-// 		const right = simplifyLine(line.slice(maxDistPoint.index), epsilon);
-
-// 		return left.slice(0, left.length - 1).concat(right);
-// 	} else {
-// 		return [firstPoint, lastPoint];
-// 	}
-// }
-
-// function pointToLineDistanceSq(point, lineStart, lineEnd, lineDistSq) {
-// 	const t = ((point.x - lineStart.x) * (lineEnd.x - lineStart.x) + (point.y - lineStart.y) * (lineEnd.y - lineStart.y)) / lineDistSq;
-
-// 	if (t < 0) {
-// 		return (lineStart.x - point.x) ** 2 + (lineStart.y - point.y) ** 2;
-// 	} else if (t > 1) {
-// 		return (lineEnd.x - point.x) ** 2 + (lineEnd.y - point.y) ** 2;
-// 	} else {
-// 		const projX = lineStart.x + t * (lineEnd.x - lineStart.x);
-// 		const projY = lineStart.y + t * (lineEnd.y - lineStart.y);
-// 		return (point.x - projX) ** 2 + (point.y - projY) ** 2;
-// 	}
-// }
-
-// /**
-//  * Function to generate a Delaunay triangulation from a set of 2D points, and
-//  * filter out triangles with edges that are longer than a specified maximum edge length.
-//  * @param {Array} points the set of 2D points to triangulate
-//  * @param {number} maxEdgeLength the maximum edge length to allow
-//  * @returns {Array} an array of triangles, where each triangle is an array of 3 points,
-//  * each point being an array of 3 numbers (x, y, z)
-//  */
-// function delaunayTriangles(points, maxEdgeLength) {
-// 	let resultTriangles = [];
-// 	let reliefTriangles = [];
-// 	try {
-// 		const getX = (point) => parseFloat(point.startXLocation);
-// 		const getY = (point) => parseFloat(point.startYLocation);
-
-// 		// Construct the Delaunay triangulation object
-// 		const delaunay = Delaunator.from(points, getX, getY);
-
-// 		// Helper function to calculate the squared distance between two points
-// 		function distanceSquared(p1, p2) {
-// 			const dx = p1[0] - p2[0];
-// 			const dy = p1[1] - p2[1];
-// 			return dx * dx + dy * dy;
-// 		}
-
-// 		for (let i = 0; i < delaunay.triangles.length; i += 3) {
-// 			const p1Index = delaunay.triangles[i];
-// 			const p2Index = delaunay.triangles[i + 1];
-// 			const p3Index = delaunay.triangles[i + 2];
-
-// 			const p1 = points[p1Index];
-// 			const p2 = points[p2Index];
-// 			const p3 = points[p3Index];
-
-// 			// Calculate squared edge lengths
-// 			const edge1Squared = distanceSquared([getX(p1), getY(p1)], [getX(p2), getY(p2)]);
-// 			const edge2Squared = distanceSquared([getX(p2), getY(p2)], [getX(p3), getY(p3)]);
-// 			const edge3Squared = distanceSquared([getX(p3), getY(p3)], [getX(p1), getY(p1)]);
-
-// 			// Check if all edge lengths are less than or equal to the maxEdgeLength squared
-// 			if (edge1Squared <= maxEdgeLength ** 2 && edge2Squared <= maxEdgeLength ** 2 && edge3Squared <= maxEdgeLength ** 2) {
-// 				// Add the triangle to the result if the condition is met
-
-// 				resultTriangles.push([
-// 					[getX(p1), getY(p1), p1.startZLocation], // [x, y, z] of point 1
-// 					[getX(p2), getY(p2), p2.startZLocation], // [x, y, z] of point 2
-// 					[getX(p3), getY(p3), p3.startZLocation] // [x, y, z] of point 3
-// 				]);
-
-// 				reliefTriangles.push([
-// 					[getX(p1), getY(p1), p1.holeTime], // [x, y, z] of point 1
-// 					[getX(p2), getY(p2), p2.holeTime], // [x, y, z] of point 2
-// 					[getX(p3), getY(p3), p3.holeTime] // [x, y, z] of point 3
-// 				]);
-// 			}
-// 		}
-// 		//console.log("Triangles", resultTriangles);
-// 		//console.log("Relief Triangles", reliefTriangles);
-// 		return { resultTriangles, reliefTriangles };
-// 	} catch (err) {
-// 		console.log(err);
-// 	}
-// }
-
-function clearCanvas() {
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
 function clearCanvasWithNotification() {
 	// Create and configure the modal
 	const clearModal = new SimpleModal({
@@ -3777,729 +3359,6 @@ function clearCanvasWithNotification() {
 	// Create and show the modal
 	clearModal.createModal();
 	clearModal.show();
-}
-
-/*** CODE TO DRAW POINTS FROM KAD DATA ***/
-function drawKADPoints(x, y, z, strokeColour) {
-	ctx.beginPath();
-	ctx.arc(x, y, 2, 0, 2 * Math.PI);
-	ctx.strokeStyle = strokeColour;
-	ctx.fillStyle = strokeColour;
-	ctx.stroke();
-	ctx.fill();
-}
-//Draws an open polyline from the kadLinesArray
-function drawKADLines(sx, sy, ex, ey, sz, ez, lineWidth, strokeColour) {
-	ctx.beginPath();
-	ctx.moveTo(sx, sy);
-	ctx.lineTo(ex, ey);
-	ctx.strokeStyle = strokeColour;
-	ctx.lineWidth = lineWidth;
-	ctx.stroke();
-}
-
-function drawKADPolys(sx, sy, ex, ey, sz, ez, lineWidth, strokeColour) {
-	ctx.beginPath();
-	ctx.moveTo(sx, sy);
-	ctx.lineTo(ex, ey);
-	ctx.strokeStyle = strokeColour;
-	ctx.lineWidth = lineWidth;
-	ctx.stroke();
-	ctx.closePath();
-}
-
-//Draws a circle from the kadCirclesArray
-function drawKADCircles(x, y, z, radius, lineWidth, strokeColour) {
-	ctx.strokeStyle = strokeColour;
-	ctx.beginPath();
-	ctx.arc(x, y, radius, 0, 2 * Math.PI);
-	//ctx.fillStyle = fillColour;
-	//ctx.fill(); // fill the circle with the fill colour
-	ctx.lineWidth = lineWidth;
-	ctx.stroke(); // draw the circle border with the stroke colour
-}
-//Draws text from the kadTextsArray
-function drawKADTexts(x, y, z, text, color) {
-	ctx.font = parseInt(currentFontSize - 2) + "px Arial";
-	ctx.fillStyle = color;
-
-	// Replace "\n" with line breaks
-	text = text.replace(/\\n/g, "\n");
-	const lines = text.split("\n");
-
-	const lineHeight = parseInt(currentFontSize - 2) + 4;
-
-	lines.forEach((line, index) => {
-		if (line.startsWith("=")) {
-			try {
-				const expression = line.substring(1); // Remove '='
-				const calculatedValue = eval(expression);
-				ctx.fillText(calculatedValue.toString(), x, y + index * lineHeight);
-			} catch (e) {
-				ctx.fillText("Error", x, y + index * lineHeight);
-			}
-		} else {
-			ctx.fillText(line, x, y + index * lineHeight);
-		}
-	});
-}
-
-/*** CODE TO DRAW POINTS FROM CSV DATA ***/
-function drawTrack(lineStartX, lineStartY, lineEndX, lineEndY, strokeColour) {
-	ctx.beginPath();
-	ctx.moveTo(lineStartX, lineStartY);
-	ctx.lineTo(lineEndX, lineEndY);
-	ctx.strokeStyle = strokeColour;
-	ctx.stroke();
-}
-
-function drawHoleToe(x, y, fillColour, strokeColour, radius) {
-	ctx.beginPath();
-	// Use the toeSizeInMeters directly to set the radius
-	ctx.arc(x, y, radius, 0, 2 * Math.PI);
-	ctx.fillStyle = fillColour;
-	ctx.strokeStyle = strokeColour;
-	ctx.stroke();
-	ctx.fill();
-}
-
-function drawHole(x, y, radius, fillColour, strokeColour) {
-	ctx.strokeStyle = strokeColour;
-	ctx.beginPath();
-	ctx.arc(x, y, radius, 0, 2 * Math.PI);
-	ctx.fillStyle = fillColour;
-	ctx.fill(); // fill the circle with the fill colour
-	ctx.lineWidth = 2;
-	ctx.stroke(); // draw the circle border with the stroke colour
-}
-//draw an X shape with the intersection of the lines at x,y and the length of the lines being the radius of the drawHole function
-function drawDummy(x, y, radius, strokeColour) {
-	ctx.strokeStyle = strokeColour;
-	ctx.lineWidth = 2; // Adjust the line width as needed
-	ctx.beginPath();
-	ctx.moveTo(x - radius, y - radius);
-	ctx.lineTo(x + radius, y + radius);
-	ctx.moveTo(x - radius, y + radius);
-	ctx.lineTo(x + radius, y - radius);
-	ctx.stroke();
-}
-//draw an square shape with the intersection of the lines at x,y and the length of the lines being the radius of the drawHole function
-function drawNoDiameterHole(x, y, sideLength, strokeColour) {
-	ctx.strokeStyle = strokeColour;
-	ctx.lineWidth = 2; // Adjust the line width as needed
-	const halfSide = sideLength / 2;
-	ctx.beginPath();
-	ctx.moveTo(x - halfSide, y - halfSide);
-	ctx.lineTo(x + halfSide, y - halfSide);
-	ctx.lineTo(x + halfSide, y + halfSide);
-	ctx.lineTo(x - halfSide, y + halfSide);
-	ctx.closePath(); // Close the path to form a square
-	ctx.stroke();
-}
-
-function drawHiHole(x, y, radius, fillColour, strokeColour) {
-	ctx.strokeStyle = strokeColour;
-	ctx.beginPath();
-	ctx.arc(x, y, radius, 0, 2 * Math.PI);
-	ctx.fillStyle = fillColour;
-	ctx.fill(); // fill the circle with the fill colour
-	ctx.lineWidth = 5;
-	ctx.stroke(); // draw the circle border with the stroke colour
-}
-
-function drawExplosion(x, y, spikes, outerRadius, innerRadius, colour1, colour2) {
-	let rotation = (Math.PI / 2) * 3;
-	let step = Math.PI / spikes;
-	let start = rotation;
-
-	// Start the drawing path
-	ctx.beginPath();
-	ctx.moveTo(x, y - outerRadius);
-	for (let i = 0; i < spikes; i++) {
-		ctx.lineTo(x + Math.cos(start) * outerRadius, y - Math.sin(start) * outerRadius);
-		start += step;
-
-		ctx.lineTo(x + Math.cos(start) * innerRadius, y - Math.sin(start) * innerRadius);
-		start += step;
-	}
-	ctx.lineTo(x, y - outerRadius);
-	ctx.closePath();
-	ctx.lineWidth = 5;
-	ctx.strokeStyle = colour1;
-	ctx.stroke();
-	ctx.fillStyle = colour2;
-	ctx.fill();
-}
-
-function drawHexagon(x, y, sideLength, fillColour, strokeColour) {
-	ctx.strokeStyle = strokeColour;
-	ctx.beginPath();
-	const rotationAngleRadians = (Math.PI / 180) * 30;
-	for (let i = 0; i < 6; i++) {
-		const angle = rotationAngleRadians + (Math.PI / 3) * i;
-		const offsetX = sideLength * Math.cos(angle);
-		const offsetY = sideLength * Math.sin(angle);
-
-		if (i === 0) {
-			ctx.moveTo(x + offsetX, y + offsetY);
-		} else {
-			ctx.lineTo(x + offsetX, y + offsetY);
-		}
-	}
-
-	ctx.closePath();
-	ctx.fillStyle = fillColour;
-	ctx.fill(); // fill the hexagon with the fill colour
-	ctx.lineWidth = 5;
-	ctx.stroke(); // draw the hexagon border with the stroke colour
-}
-//Left-align the text
-function drawText(x, y, text, color) {
-	ctx.font = parseInt(currentFontSize - 2) + "px Arial";
-	ctx.fillStyle = color;
-	ctx.fillText(text, x, y);
-}
-// Right-align the text by calculating the text width
-function drawRightAlignedText(x, y, text, color) {
-	ctx.font = parseInt(currentFontSize - 2) + "px Arial";
-	const textWidth = ctx.measureText(text).width;
-	ctx.fillStyle = color;
-	// Draw the text at an x position minus the text width for right alignment
-	drawText(x - textWidth, y, text, color);
-}
-
-function drawDirectionArrow(startX, startY, endX, endY, fillColour, strokeColour, connScale) {
-	try {
-		// Set up the arrow parameters
-		var arrowWidth = (firstMovementSize / 4) * currentScale; // Width of the arrowhead
-		var arrowLength = 2 * (firstMovementSize / 4) * currentScale; // Length of the arrowhead
-		var tailWidth = arrowWidth * 0.7; // Width of the tail (adjust as needed)
-		const angle = Math.atan2(endY - startY, endX - startX); // Angle of the arrow
-
-		// Set the stroke and fill colors
-		ctx.strokeStyle = strokeColour; // Stroke color (black outline)
-		ctx.fillStyle = fillColour; // Fill color (goldenrod)
-
-		// Begin drawing the arrow as a single path
-		ctx.beginPath();
-
-		// Move to the start point of the arrow
-		ctx.moveTo(startX + (tailWidth / 2) * Math.sin(angle), startY - (tailWidth / 2) * Math.cos(angle)); // Top-left corner of the tail
-
-		// Draw to the end point of the tail (top-right corner)
-		ctx.lineTo(endX - arrowLength * Math.cos(angle) + (tailWidth / 2) * Math.sin(angle), endY - arrowLength * Math.sin(angle) - (tailWidth / 2) * Math.cos(angle));
-
-		// Draw the right base of the arrowhead
-		ctx.lineTo(endX - arrowLength * Math.cos(angle) + arrowWidth * Math.sin(angle), endY - arrowLength * Math.sin(angle) - arrowWidth * Math.cos(angle));
-
-		// Draw the tip of the arrowhead
-		ctx.lineTo(endX, endY);
-
-		// Draw the left base of the arrowhead
-		ctx.lineTo(endX - arrowLength * Math.cos(angle) - arrowWidth * Math.sin(angle), endY - arrowLength * Math.sin(angle) + arrowWidth * Math.cos(angle));
-
-		// Draw back to the bottom-right corner of the tail
-		ctx.lineTo(endX - arrowLength * Math.cos(angle) - (tailWidth / 2) * Math.sin(angle), endY - arrowLength * Math.sin(angle) + (tailWidth / 2) * Math.cos(angle));
-
-		// Draw to the bottom-left corner of the tail
-		ctx.lineTo(startX - (tailWidth / 2) * Math.sin(angle), startY + (tailWidth / 2) * Math.cos(angle));
-
-		ctx.closePath();
-		ctx.fill(); // Fill the arrow with color
-		ctx.stroke(); // Outline the arrow with a stroke
-	} catch (error) {
-		console.error("Error while drawing arrow:", error);
-	}
-}
-
-function drawArrow(startX, startY, endX, endY, color, connScale) {
-	//console.log(`Drawing arrow from (${startX}, ${startY}) to (${endX}, ${endY}) with color ${color}`);
-	try {
-		// Set up the arrow parameters
-		var arrowWidth = (connScale / 4) * currentScale;
-		var arrowLength = 2 * (connScale / 4) * currentScale;
-
-		// Calculate the angle of the line
-		const angle = Math.atan2(startX - endX, startY - endY); // Calculate the angle of the line (reversed)
-
-		ctx.strokeStyle = color;
-		ctx.fillStyle = color;
-
-		// Draw the line
-		ctx.beginPath();
-		ctx.moveTo(parseInt(startX), parseInt(startY));
-		ctx.lineTo(parseInt(endX), parseInt(endY));
-		ctx.lineWidth = 2;
-		ctx.stroke();
-
-		// Draw the arrowhead
-		if (endX == startX && endY == startY) {
-			var size = (connScale / 4) * currentScale; // Change this value to adjust the size of the house shape
-			ctx.fillStyle = color;
-			ctx.beginPath();
-			ctx.moveTo(endX, endY); // Apex of the house
-			ctx.lineTo(endX - size / 2, endY + size); // Bottom left corner
-			ctx.lineTo(endX - size / 2, endY + 1.5 * size);
-			ctx.lineTo(endX + size / 2, endY + 1.5 * size); // Bottom right corner
-			ctx.lineTo(endX + size / 2, endY + size); // Bottom right corner
-			ctx.closePath(); // Close the shape
-			ctx.stroke(); // Draw the outline
-		} else {
-			ctx.beginPath();
-			ctx.moveTo(parseInt(endX), parseInt(endY));
-			ctx.lineTo(endX - arrowLength * Math.cos((Math.PI / 2) * 3 - angle) - arrowWidth * Math.sin((Math.PI / 2) * 3 - angle), endY - arrowLength * Math.sin((Math.PI / 2) * 3 - angle) + arrowWidth * Math.cos((Math.PI / 2) * 3 - angle));
-			ctx.lineTo(endX - arrowLength * Math.cos((Math.PI / 2) * 3 - angle) + arrowWidth * Math.sin((Math.PI / 2) * 3 - angle), endY - arrowLength * Math.sin((Math.PI / 2) * 3 - angle) - arrowWidth * Math.cos((Math.PI / 2) * 3 - angle));
-			ctx.closePath();
-			ctx.fill();
-		}
-	} catch (error) {
-		console.error("Error while drawing arrow:", error);
-	}
-}
-
-function drawArrowDelayText(startX, startY, endX, endY, color, text) {
-	// Calculate the angle of the text and the midpoint of the line
-	const angle = Math.atan2(endY - startY, endX - startX);
-	const midX = (startX + endX) / 2;
-	const midY = (startY + endY) / 2;
-
-	// Save the current canvas state and apply transformations
-	ctx.save();
-	ctx.translate(midX, midY);
-	ctx.rotate(angle);
-
-	// Draw the text along the line
-	ctx.fillStyle = color;
-	ctx.font = parseInt(currentFontSize - 2) + "px Arial";
-	ctx.fillText(text, -currentFontSize, -3);
-
-	// Restore the canvas state
-	ctx.restore();
-}
-
-function drawDelauanySlopeMap(triangles, centroid, strokeColour) {
-	ctx.strokeStyle = strokeColour;
-	ctx.fillStyle = fillColour;
-	ctx.lineWidth = 1;
-	console.log("drawDelauanySlopeMap: " + triangles.length);
-	for (let i = 0; i < triangles.length; i++) {
-		const triangle = triangles[i];
-		const tAX = triangle[0][0];
-		const tAY = triangle[0][1];
-		const tAZ = triangle[0][2];
-		const tBX = triangle[1][0];
-		const tBY = triangle[1][1];
-		const tBZ = triangle[1][2];
-		const tCX = triangle[2][0];
-		const tCY = triangle[2][1];
-		const tCZ = triangle[2][2];
-
-		const edge1 = {
-			x: tBX - tAX,
-			y: tBY - tAY,
-			z: tBZ - tAZ
-		};
-		const edge2 = {
-			x: tCX - tAX,
-			y: tCY - tAY,
-			z: tCZ - tAZ
-		};
-		const edge3 = {
-			x: tCX - tBX,
-			y: tCY - tBY,
-			z: tCZ - tBZ
-		};
-
-		// Calculate the maximum absolute slope angle for this triangle
-		//const slopeAngles = [Math.abs(getEdgeSlopeAngle(triangle[0], triangle[1])), Math.abs(getEdgeSlopeAngle(triangle[1], triangle[2])), Math.abs(getEdgeSlopeAngle(triangle[2], triangle[0]))];
-		//let maxSlopeAngle = Math.max(...slopeAngles);
-
-		let maxSlopeAngle = getDipAngle(triangle);
-
-		// Create a triangle array
-		const aAX = (tAX - centroid.x) * currentScale + canvas.width / 2;
-		const aAY = (-tAY + centroid.y) * currentScale + canvas.height / 2;
-		const aAZ = tAZ;
-		const aBX = (tBX - centroid.x) * currentScale + canvas.width / 2;
-		const aBY = (-tBY + centroid.y) * currentScale + canvas.height / 2;
-		const aBZ = tBZ;
-		const aCX = (tCX - centroid.x) * currentScale + canvas.width / 2;
-		const aCY = (-tCY + centroid.y) * currentScale + canvas.height / 2;
-		const aCZ = tCZ;
-
-		// Define the minimum and maximum RGB values (rgb(50, 50, 50) and rgb(200, 200, 200))
-		const minRGB = [225, 225, 225];
-		const maxRGB = [100, 100, 100];
-
-		// Calculate the RGB values based on maxSlopeAngle using linear interpolation
-		const r = Math.round(minRGB[0] + (maxRGB[0] - minRGB[0]) * (maxSlopeAngle / 50));
-		const g = Math.round(minRGB[1] + (maxRGB[1] - minRGB[1]) * (maxSlopeAngle / 50));
-		const b = Math.round(minRGB[2] + (maxRGB[2] - minRGB[2]) * (maxSlopeAngle / 50));
-
-		const ir = 255 - Math.round(minRGB[0] + (maxRGB[0] - minRGB[0]) * (maxSlopeAngle / 50));
-		const ig = 255 - Math.round(minRGB[1] + (maxRGB[1] - minRGB[1]) * (maxSlopeAngle / 50));
-		const ib = 255 - Math.round(minRGB[2] + (maxRGB[2] - minRGB[2]) * (maxSlopeAngle / 50));
-
-		// Define the color ranges and corresponding RGB values
-		let triangleFillColour;
-		if (maxSlopeAngle >= 0 && maxSlopeAngle < 5) {
-			// Cornflower blue for angles in the range [0, 4)
-			triangleFillColour = "rgb(51, 139, 255)";
-		} else if (maxSlopeAngle >= 5 && maxSlopeAngle < 7) {
-			// Green for angles in the range [7, 10]
-			triangleFillColour = "rgb(0, 102, 204)";
-		} else if (maxSlopeAngle >= 7 && maxSlopeAngle < 9) {
-			// Green for angles in the range [7, 10]
-			triangleFillColour = "rgb(0, 204, 204)";
-		} else if (maxSlopeAngle >= 9 && maxSlopeAngle < 12) {
-			// Green for angles in the range [7, 10]
-			triangleFillColour = "rgb(102, 204, 0)";
-		} else if (maxSlopeAngle >= 12 && maxSlopeAngle < 15) {
-			// Green for angles in the range [7, 10]
-			triangleFillColour = "rgb(204, 204, 0)";
-		} else if (maxSlopeAngle >= 15 && maxSlopeAngle < 17) {
-			// Green for angles in the range [7, 10]
-			triangleFillColour = "rgb(255, 128, 0)";
-		} else if (maxSlopeAngle >= 17 && maxSlopeAngle < 20) {
-			// Green for angles in the range [7, 10]
-			triangleFillColour = "rgb(255, 0, 0)";
-		} else {
-			// Default to grey for all other angles
-			triangleFillColour = "rgb(153, 0, 76)";
-		}
-
-		// Combine the calculated RGB values into the final fill color
-		// triangleFillColour = `rgb(${r}, ${g}, ${b})`;
-		const triangleStrokeColor = `rgb(${r}, ${g}, ${b})`;
-		// Invert the color by subtracting each channel value from 255
-		const invertedColour = `rgb(${ir}, ${ig}, ${ib})`;
-
-		ctx.strokeStyle = triangleStrokeColor;
-		ctx.fillStyle = triangleFillColour;
-		ctx.lineWidth = 1;
-
-		ctx.beginPath();
-		ctx.moveTo(aAX, aAY);
-		ctx.lineTo(aBX, aBY);
-		ctx.lineTo(aCX, aCY);
-		ctx.closePath();
-		ctx.stroke();
-		ctx.fill();
-
-		ctx.lineWidth = 1;
-	}
-}
-function drawDelauanyBurdenRelief(triangles, centroid, strokeColour) {
-	ctx.strokeStyle = strokeColour;
-	ctx.lineWidth = 1;
-	//console.log("drawDelauanyBurdenRelief: " + triangles.length);
-	// const reliefResults = delaunayContourBurdenRelief(triangles, 20, 0);
-	// console.log("Relief Results:", reliefResults);
-	for (let i = 0; i < triangles.length; i++) {
-		const triangle = triangles[i];
-		const tAX = triangle[0][0];
-		const tAY = triangle[0][1];
-		const tAZ = triangle[0][2];
-		const tBX = triangle[1][0];
-		const tBY = triangle[1][1];
-		const tBZ = triangle[1][2];
-		const tCX = triangle[2][0];
-		const tCY = triangle[2][1];
-		const tCZ = triangle[2][2];
-
-		// Find the earliest and latest times
-		const earliestTime = Math.min(tAZ, tBZ, tCZ);
-		const latestTime = Math.max(tAZ, tBZ, tCZ);
-
-		// Calculate the time difference
-		const timeDifference = latestTime - earliestTime; // ms
-
-		// Determine which points correspond to the earliest and latest times
-		let p1, p2;
-		if (earliestTime === tAZ) {
-			p1 = { x: tAX, y: tAY };
-		} else if (earliestTime === tBZ) {
-			p1 = { x: tBX, y: tBY };
-		} else {
-			p1 = { x: tCX, y: tCY };
-		}
-
-		if (latestTime === tAZ) {
-			p2 = { x: tAX, y: tAY };
-		} else if (latestTime === tBZ) {
-			p2 = { x: tBX, y: tBY };
-		} else {
-			p2 = { x: tCX, y: tCY };
-		}
-
-		// Calculate the distance between the two points (earliest and latest)
-		const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-
-		// Calculate burden relief in ms/m
-		const burdenRelief = timeDifference / distance;
-
-		//console.log("Time Difference (ms):", timeDifference);
-		//console.log("Distance (m):", distance);
-		//console.log("Burden Relief (ms/m):", burdenRelief);
-
-		// Color mapping based on timing relief (adjust values as needed)
-		let triangleFillColour;
-		if (burdenRelief < 4) {
-			triangleFillColour = "rgb(75, 20, 20)"; // fast
-		} else if (burdenRelief < 7) {
-			triangleFillColour = "rgb(255, 40, 40)";
-		} else if (burdenRelief < 10) {
-			triangleFillColour = "rgb(255, 120, 50)"; //
-		} else if (burdenRelief < 13) {
-			triangleFillColour = "rgb(255, 255, 50)"; //
-		} else if (burdenRelief < 16) {
-			triangleFillColour = "rgb(50, 255, 70)"; //
-		} else if (burdenRelief < 19) {
-			triangleFillColour = "rgb(50, 255, 200)"; //
-		} else if (burdenRelief < 22) {
-			triangleFillColour = "rgb(50, 230, 255)"; //
-		} else if (burdenRelief < 25) {
-			triangleFillColour = "rgb(50, 180, 255)"; //
-		} else if (burdenRelief < 30) {
-			triangleFillColour = "rgb(50, 100, 255)"; //
-		} else if (burdenRelief < 40) {
-			triangleFillColour = "rgb(50, 0, 255)"; //
-		} else {
-			triangleFillColour = "rgb(75, 0, 150)"; // slow
-		}
-
-		ctx.fillStyle = triangleFillColour;
-
-		// Draw triangle
-		const aAX = (tAX - centroid.x) * currentScale + canvas.width / 2;
-		const aAY = (-tAY + centroid.y) * currentScale + canvas.height / 2;
-		const aBX = (tBX - centroid.x) * currentScale + canvas.width / 2;
-		const aBY = (-tBY + centroid.y) * currentScale + canvas.height / 2;
-		const aCX = (tCX - centroid.x) * currentScale + canvas.width / 2;
-		const aCY = (-tCY + centroid.y) * currentScale + canvas.height / 2;
-
-		ctx.beginPath();
-		ctx.moveTo(aAX, aAY);
-		ctx.lineTo(aBX, aBY);
-		ctx.lineTo(aCX, aCY);
-		ctx.closePath();
-		ctx.stroke();
-		ctx.fill();
-	}
-}
-
-function calculateTriangleCentroid(triangle) {
-	const tAX = triangle[0][0];
-	const tAY = triangle[0][1];
-	const tAZ = triangle[0][2];
-	const tBX = triangle[1][0];
-	const tBY = triangle[1][1];
-	const tBZ = triangle[1][2];
-	const tCX = triangle[2][0];
-	const tCY = triangle[2][1];
-	const tCZ = triangle[2][2];
-
-	const triangleCentroid = {
-		x: (tAX + tBX + tCX) / 3,
-		y: (tAY + tBY + tCY) / 3,
-		z: (tAZ + tBZ + tCZ) / 3
-	};
-	return triangleCentroid;
-}
-function drawReliefLegend(strokecolour) {
-	//draw a legend at the bottom of the screen in the center
-	//the legend should be for the drawDelauanyTriangles function
-
-	const legend0to4 = "rgb(75, 20, 20)"; // fast
-	const legend4to7 = "rgb(255, 40, 40)";
-	const legend7to10 = "rgb(255, 120, 50)"; //
-	const legend10to13 = "rgb(255, 255, 50)"; //
-	const legend13to16 = "rgb(50, 255, 70)"; //
-	const legend16to19 = "rgb(50, 255, 200)"; //
-	const legend19to22 = "rgb(50, 230, 255)"; //
-	const legend22to25 = "rgb(50, 180, 255)"; //
-	const legend25to30 = "rgb(50, 100, 255)"; //
-	const legend30to40 = "rgb(50, 0, 255)"; //
-	const legend40above = "rgb(75, 0, 150)"; // slow
-
-	//draw the legend
-	ctx.beginPath();
-	ctx.fill();
-	ctx.font = "14px Arial";
-	ctx.fillStyle = strokecolour;
-	ctx.fillText("Legend Relief", 10, canvas.height / 2 - 70);
-	ctx.fillText("0ms/m - 4ms/m", 10, canvas.height / 2 - 40);
-	ctx.fillText("4ms/m - 7ms/m", 10, canvas.height / 2 - 10);
-	ctx.fillText("7ms/m - 10ms/m", 10, canvas.height / 2 + 20);
-	ctx.fillText("10ms/m - 13ms/m", 10, canvas.height / 2 + 50);
-	ctx.fillText("13ms/m - 16ms/m", 10, canvas.height / 2 + 80);
-	ctx.fillText("16ms/m - 19ms/m", 10, canvas.height / 2 + 110);
-	ctx.fillText("19ms/m - 22ms/m", 10, canvas.height / 2 + 140);
-	ctx.fillText("22ms/m - 25ms/m", 10, canvas.height / 2 + 170);
-	ctx.fillText("25ms/m - 30ms/m", 10, canvas.height / 2 + 200);
-	ctx.fillText("30ms/m - 40ms/m", 10, canvas.height / 2 + 230);
-	ctx.fillText("40ms/m above", 10, canvas.height / 2 + 260);
-	ctx.fillStyle = legend0to4;
-	ctx.fillRect(130, canvas.height / 2 - 55, 20, 20);
-	ctx.fillStyle = legend4to7;
-	ctx.fillRect(130, canvas.height / 2 - 25, 20, 20);
-	ctx.fillStyle = legend7to10;
-	ctx.fillRect(130, canvas.height / 2 + 5, 20, 20);
-	ctx.fillStyle = legend10to13;
-	ctx.fillRect(130, canvas.height / 2 + 35, 20, 20);
-	ctx.fillStyle = legend13to16;
-	ctx.fillRect(130, canvas.height / 2 + 65, 20, 20);
-	ctx.fillStyle = legend16to19;
-	ctx.fillRect(130, canvas.height / 2 + 95, 20, 20);
-	ctx.fillStyle = legend19to22;
-	ctx.fillRect(130, canvas.height / 2 + 125, 20, 20);
-	ctx.fillStyle = legend22to25;
-	ctx.fillRect(130, canvas.height / 2 + 155, 20, 20);
-	ctx.fillStyle = legend25to30;
-	ctx.fillRect(130, canvas.height / 2 + 185, 20, 20);
-	ctx.fillStyle = legend30to40;
-	ctx.fillRect(130, canvas.height / 2 + 215, 20, 20);
-	ctx.fillStyle = legend40above;
-	ctx.fillRect(130, canvas.height / 2 + 245, 20, 20);
-	ctx.stroke();
-}
-
-function drawTriangleAngleText(triangle, centroid, strokeColour) {
-	const triangleCentroid = calculateTriangleCentroid(triangle);
-	let maxSlopeAngle = getDipAngle(triangle);
-	drawText((triangleCentroid.x - centroid.x) * currentScale + canvas.width / 2, (-triangleCentroid.y + centroid.y) * currentScale + canvas.height / 2, parseFloat(maxSlopeAngle).toFixed(1), strokeColour);
-}
-
-function drawTriangleBurdenReliefText(triangle, centroid, strokeColour) {
-	const triangleCentroid = calculateTriangleCentroid(triangle);
-	let burdenRelief = getBurdenRelief(triangle);
-	drawText((triangleCentroid.x - centroid.x) * currentScale + canvas.width / 2, (-triangleCentroid.y + centroid.y) * currentScale + canvas.height / 2, parseFloat(burdenRelief).toFixed(1), strokeColour);
-}
-
-function getAngleBetweenEdges(edge1, edge2) {
-	const dotProduct = edge1.x * edge2.x + edge1.y * edge2.y + edge1.z * edge2.z;
-	const magEdge1 = Math.sqrt(edge1.x * edge1.x + edge1.y * edge1.y + edge1.z * edge1.z);
-	const magEdge2 = Math.sqrt(edge2.x * edge2.x + edge2.y * edge2.y + edge2.z * edge2.z);
-	const epsilon = 1e-6; // Tolerance for checking if magnitude is close to zero
-
-	if (Math.abs(magEdge1) < epsilon || Math.abs(magEdge2) < epsilon) {
-		// Handle the case where either edge is degenerate (magnitude close to zero)
-		return 0;
-	}
-
-	let angle = Math.acos(dotProduct / (magEdge1 * magEdge2));
-	return (angle * 180) / Math.PI;
-}
-
-function getDipAngle(triangle) {
-	const edge1 = [triangle[1][0] - triangle[0][0], triangle[1][1] - triangle[0][1], triangle[1][2] - triangle[0][2]];
-	const edge2 = [triangle[2][0] - triangle[0][0], triangle[2][1] - triangle[0][1], triangle[2][2] - triangle[0][2]];
-
-	// Calculate the normal vector of the triangle's plane
-	const normalVector = [edge1[1] * edge2[2] - edge1[2] * edge2[1], edge1[2] * edge2[0] - edge1[0] * edge2[2], edge1[0] * edge2[1] - edge1[1] * edge2[0]];
-
-	// Calculate the dot product with the vertical direction (0, 0, 1)
-	const dotProduct = normalVector[0] * 0 + normalVector[1] * 0 + normalVector[2] * 1;
-	const magNormal = Math.sqrt(normalVector[0] ** 2 + normalVector[1] ** 2 + normalVector[2] ** 2);
-
-	const epsilon = 1e-6; // Tolerance for checking if magnitude is close to zero
-	if (Math.abs(magNormal) < epsilon) {
-		// Handle degenerate case
-		return 0;
-	}
-
-	const angleRadians = Math.acos(dotProduct / magNormal);
-	const angleDegrees = (angleRadians * 180) / Math.PI;
-
-	// Calculate the dip angle between the dot product and the horizontal plane (0 degrees)
-	const dipAngle = 180 - angleDegrees;
-
-	return dipAngle;
-}
-
-function getEdgeSlopeAngle(p1, p2) {
-	const dx = p2[0] - p1[0];
-	const dy = p2[1] - p1[1];
-	const dz = p2[2] - p1[2]; // Consider the z-axis difference for vertical deviation
-	const slopeAngleRadians = Math.atan2(dz, Math.sqrt(dx * dx + dy * dy));
-	const slopeAngleDegrees = (slopeAngleRadians * 180) / Math.PI;
-	return slopeAngleDegrees;
-}
-
-function getAngleBetweenPoints(p1, p2) {
-	// Calculate the inferred point p3
-	const p3 = [p1[0], p1[1], p2[2]];
-
-	// Calculate the edges
-	const edge1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
-	const edge2 = [p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]];
-
-	// Calculate the angle between the edges
-	const angleRadians = Math.acos((edge1[0] * edge2[0] + edge1[1] * edge2[1] + edge1[2] * edge2[2]) / (vectorMagnitude(edge1) * vectorMagnitude(edge2)));
-
-	// Convert the angle to degrees
-	const angleDegrees = (angleRadians * 180) / Math.PI;
-
-	return angleDegrees;
-}
-
-function vectorMagnitude(vector) {
-	return Math.sqrt(vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2);
-}
-
-function getBurdenRelief(triangle) {
-	const tAX = triangle[0][0];
-	const tAY = triangle[0][1];
-	const tAZ = triangle[0][2];
-	const tBX = triangle[1][0];
-	const tBY = triangle[1][1];
-	const tBZ = triangle[1][2];
-	const tCX = triangle[2][0];
-	const tCY = triangle[2][1];
-	const tCZ = triangle[2][2];
-	// Find the earliest and latest times
-	const earliestTime = Math.min(tAZ, tBZ, tCZ);
-	const latestTime = Math.max(tAZ, tBZ, tCZ);
-
-	// Calculate the time difference
-	const timeDifference = latestTime - earliestTime; // ms
-
-	// Determine which points correspond to the earliest and latest times
-	let p1, p2;
-	if (earliestTime === tAZ) {
-		p1 = { x: tAX, y: tAY };
-	} else if (earliestTime === tBZ) {
-		p1 = { x: tBX, y: tBY };
-	} else {
-		p1 = { x: tCX, y: tCY };
-	}
-
-	if (latestTime === tAZ) {
-		p2 = { x: tAX, y: tAY };
-	} else if (latestTime === tBZ) {
-		p2 = { x: tBX, y: tBY };
-	} else {
-		p2 = { x: tCX, y: tCY };
-	}
-
-	// Calculate the distance between the two points (earliest and latest)
-	const distance = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-
-	// Calculate burden relief in ms/m
-	const burdenRelief = timeDifference / distance;
-
-	//console.log("Time Difference (ms):", timeDifference);
-	//console.log("Distance (m):", distance);
-	//console.log("Burden Relief (ms/m):", burdenRelief);
-	return burdenRelief;
-}
-
-function drawMousePosition(ctx, x, y) {
-	ctx.strokeStyle = "red";
-	ctx.beginPath();
-	ctx.rect(x - 7, y - 7, 14, 14);
-	ctx.lineWidth = 1;
-	ctx.stroke();
 }
 
 function getClickedHole(clickX, clickY) {
@@ -4645,7 +3504,7 @@ function getClickedHole(clickX, clickY) {
 		}
 		if (isDisplayingContours) {
 			try {
-				const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+				const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 			} catch (error) {
 				console.warn("Error calculating contour lines:", error);
 			}
@@ -4668,7 +3527,7 @@ function getClickedHole(clickX, clickY) {
 		}
 		if (isDisplayingDirectionArrows) {
 			try {
-				const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+				const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 			} catch (error) {
 				console.warn("Error calculating contour lines:", error);
 			}
@@ -4822,7 +3681,7 @@ function handleConnectorClick(event) {
 					points[clickedHoleIndex].colourHexDecimal = getJSColourHex();
 				}
 				fromHoleStore = null;
-				const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+				const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 				// directionArrows now contains the arrow data for later drawing
 
@@ -4846,7 +3705,7 @@ function handleConnectorClick(event) {
 				// Reset the fromHole and exit add connector mode
 				fromHoleStore = null;
 
-				const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+				const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 				// directionArrows now contains the arrow data for later drawing
 
@@ -4930,8 +3789,6 @@ function calculateDistance(point1, point2) {
 	const dy = point2.startYLocation - point1.startYLocation;
 	return Math.sqrt(dx * dx + dy * dy);
 }
-
-let selectedPoint = null;
 
 function getClickedPointInMap(map, clickX, clickY) {
 	const adjustedX = (clickX - canvas.width / 2) / currentScale + centroidX;
@@ -5214,7 +4071,7 @@ function deleteSelectedHole() {
 
 			delaunayTriangles(points, maxEdgeLength);
 			calculateTimes(points);
-			contourLinesArray = recalculateContours(points, deltaX, deltaY);
+			contourLinesArray = recalculateContours(points, maxEdgeLength);
 			drawData(points, selectedHole);
 		} else {
 			drawData(points, selectedHole);
@@ -5238,7 +4095,7 @@ function deleteSelectedHole() {
 		// Recalculate dependent data structures
 		const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 		calculateTimes(points);
-		const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+		const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 		// directionArrows now contains the arrow data for later drawing
 
@@ -5276,7 +4133,7 @@ function deleteSelectedPattern() {
 			// Recalculate contour lines
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 
@@ -5305,7 +4162,7 @@ function deleteSelectedAllPatterns() {
 			// Recalculate contour lines
 			const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
 			calculateTimes(points);
-			const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+			const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 			// directionArrows now contains the arrow data for later drawing
 
@@ -5367,26 +4224,23 @@ function renumberHolesFunction(startNumber, selectedEntityName) {
 	drawData(points, selectedHole);
 }
 
-function handleHoleAddingClick(canvas, event) {
+function handleHoleAddingClick(event) {
 	if (isAddingHole) {
-		// Get the click/touch coordinates relative to the canvas
-		//const rect = canvas.getBoundingClientRect();
-		// Get the click/touch coordinates relative to the canvas
-		const rect = canvas.getBoundingClientRect();
-		let clickX = event.clientX - rect.left;
-		let clickY = event.clientY - rect.top;
+		const { x, y } = getMousePos(event);
+		let clickX = x;
+		let clickY = y;
 
-		if (isNaN(event.clientX - rect.left) || isNaN(event.clientY - rect.top)) {
+		if (isNaN(x) || isNaN(y)) {
 			// Handle the case when the values are NaN
 			clickX = event.changedTouches[0].clientX - rect.left;
 			clickY = event.changedTouches[0].clientY - rect.top;
 		} else {
 			// Proceed with the calculation using the valid values
-			clickX = event.clientX - rect.left;
-			clickY = event.clientY - rect.top;
+			clickX = x;
+			clickY = y;
 		}
-		worldX = (clickX - canvas.width / 2) / currentScale + centroidX;
-		worldY = -(clickY - canvas.height / 2) / currentScale + centroidY;
+		worldX = getMouseWorldPos(event).x;
+		worldY = getMouseWorldPos(event).y;
 
 		//console.log("worldX: " + worldX + " worldY: " + worldY);
 	} else {
@@ -5402,8 +4256,8 @@ function handleKADPointClick(canvas, event) {
 		// const clickX = event.clientX - rect.left;
 		// const clickY = event.clientY - rect.top;
 		const mousePos = getMousePos(event);
-		const clickX = mousePos.x;
-		const clickY = mousePos.y;
+		let clickX = mousePos.x;
+		let clickY = mousePos.y;
 
 		if (isNaN(event.clientX - rect.left) || isNaN(event.clientY - rect.top)) {
 			// Handle the case when the values are NaN
@@ -7166,7 +6020,7 @@ function measuredCommentPopup() {
 		}
 	});
 }
-function handleBlastNameClick(canvas, event) {
+function handleBlastNameClick(event) {
 	if (isBlastNameEditing) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7496,7 +6350,7 @@ function debugPoints(points) {
 	//////////////////////////////////////////////
 }
 
-function handleMeasuredLengthClick(canvas, event) {
+function handleMeasuredLengthClick(event) {
 	if (isMeasureRecording) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7523,7 +6377,7 @@ function handleMeasuredLengthClick(canvas, event) {
 		}
 	}
 }
-function handleMeasuredMassClick(canvas, event) {
+function handleMeasuredMassClick(event) {
 	if (isMeasureRecording) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7550,7 +6404,7 @@ function handleMeasuredMassClick(canvas, event) {
 		}
 	}
 }
-function handleMeasuredCommentClick(canvas, event) {
+function handleMeasuredCommentClick(event) {
 	if (isMeasureRecording) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7578,7 +6432,7 @@ function handleMeasuredCommentClick(canvas, event) {
 	}
 }
 
-function handleHoleTypeEditClick(canvas, event) {
+function handleHoleTypeEditClick(event) {
 	if (isTypeEditing) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7606,7 +6460,7 @@ function handleHoleTypeEditClick(canvas, event) {
 	}
 }
 
-function handleHoleLengthEditClick(canvas, event) {
+function handleHoleLengthEditClick(event) {
 	if (isLengthEditing) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7641,7 +6495,7 @@ function handleHoleLengthEditClick(canvas, event) {
 	}
 }
 
-function handleHoleDiameterEditClick(canvas, event) {
+function handleHoleDiameterEditClick(event) {
 	if (isDiameterEditing) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7673,7 +6527,7 @@ function handleHoleDiameterEditClick(canvas, event) {
 	}
 }
 
-function handleAngleEditClick(canvas, event) {
+function handleAngleEditClick(event) {
 	if (isAngleEditing) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7709,7 +6563,7 @@ function handleAngleEditClick(canvas, event) {
 	}
 }
 
-function handleBearingEditClick(canvas, event) {
+function handleBearingEditClick(event) {
 	if (isBearingEditing) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7742,12 +6596,8 @@ function handleBearingEditClick(canvas, event) {
 	}
 }
 
-function handleEastingEditClick(canvas, event) {
+function handleEastingEditClick(event) {
 	if (isEastingEditing) {
-		// Get the click/touch coordinates relative to the canvas
-		// const rect = canvas.getBoundingClientRect();
-		// const clickX = event.clientX - rect.left;
-		// const clickY = event.clientY - rect.top;
 		const mousePos = getMousePos(event);
 		const clickX = mousePos.x;
 		const clickY = mousePos.y;
@@ -7775,12 +6625,8 @@ function handleEastingEditClick(canvas, event) {
 	}
 }
 
-function handleNorthingEditClick(canvas, event) {
+function handleNorthingEditClick(event) {
 	if (isNorthingEditing) {
-		// Get the click/touch coordinates relative to the canvas
-		// const rect = canvas.getBoundingClientRect();
-		// const clickX = event.clientX - rect.left;
-		// const clickY = event.clientY - rect.top;
 		const mousePos = getMousePos(event);
 		const clickX = mousePos.x;
 		const clickY = mousePos.y;
@@ -7806,7 +6652,7 @@ function handleNorthingEditClick(canvas, event) {
 	}
 }
 
-function handleElevationEditClick(canvas, event) {
+function handleElevationEditClick(event) {
 	if (isElevationEditing) {
 		// Get the click/touch coordinates relative to the canvas
 		// const rect = canvas.getBoundingClientRect();
@@ -7837,57 +6683,6 @@ function handleElevationEditClick(canvas, event) {
 		}
 	}
 }
-
-// function recalculateContours(points, deltaX, deltaY) {
-// 	try {
-// 		const contourData = [];
-// 		holeTimes = calculateTimes(points);
-// 		timeChart();
-
-// 		// Prepare contour data
-// 		for (let i = 0; i < holeTimes.length; i++) {
-// 			const [entityName, holeID] = holeTimes[i][0].split(":::");
-// 			const time = holeTimes[i][1];
-
-// 			const point = points.find((p) => p.entityName === entityName && p.holeID === holeID);
-
-// 			if (point) {
-// 				contourData.push({
-// 					x: point.startXLocation,
-// 					y: point.startYLocation,
-// 					z: time
-// 				});
-// 			}
-// 		}
-
-// 		if (contourData.length === 0) {
-// 			throw new Error("No valid contour data points found.");
-// 		}
-
-// 		const maxHoleTime = Math.max(...contourData.map((point) => point.z));
-
-// 		// Calculate contour lines and store them in contourLinesArray
-// 		contourLinesArray = [];
-// 		directionArrows = [];
-// 		let interval = maxHoleTime < 350 ? 25 : maxHoleTime < 700 ? 100 : 250;
-// 		interval = parseInt(intervalAmount);
-
-// 		// Iterate over contour levels
-// 		for (let contourLevel = 0; contourLevel <= maxHoleTime; contourLevel += interval) {
-// 			const { contourLines, directionArrows } = delaunayContours(contourData, contourLevel, maxEdgeLength);
-// 			const epsilon = 1; // Adjust this value to control the level of simplification
-// 			const simplifiedContourLines = contourLines.map((line) => simplifyLine(line, epsilon));
-// 			contourLinesArray.push(simplifiedContourLines);
-
-// 			//console.log("contourLinesArray: ", contourLinesArray);
-// 			//console.log("directionArrows: ", directionArrows);
-// 		}
-// 		// Return both contour lines
-// 		return { contourLinesArray, directionArrows };
-// 	} catch (err) {
-// 		console.error(err);
-// 	}
-// }
 
 function calculateEndXYZ(clickedHole, newValue, modeLAB) {
 	let startX = clickedHole.startXLocation;
@@ -8003,729 +6798,85 @@ function calculateEndXYZ(clickedHole, newValue, modeLAB) {
 	};
 }
 
-export function timeChart() {
-	if (Array.isArray(holeTimes)) {
-		const times = holeTimes.map((time) => time[1]);
-		const maxTime = Math.max(...times);
-		const timeRange = parseInt(document.getElementById("timeRange").value);
-		const numBins = Math.ceil(maxTime / timeRange);
-		let counts = [];
-		try {
-			counts = Array(numBins).fill(0);
-		} catch (error) {
-			fileFormatPopup(error);
-		}
-
-		for (let i = 0; i < times.length; i++) {
-			const binIndex = Math.floor(times[i] / timeRange);
-			counts[binIndex]++;
-		}
-
-		var config = {
-			responsive: true,
-			displayModeBar: true,
-			modeBarButtonsToRemove: ["lasso2d", "hoverClosestCartesian", "hoverCompareCartesian", "toggleSpikelines"],
-			modeBarButtons: [["select2d", "zoomIn2d", "zoomOut2d", "autoScale2d", "resetScale2d", "toImage", "pan2d"]]
-		};
-
-		const binEdges = Array(numBins)
-			.fill(0)
-			.map((_, index) => index * timeRange);
-
-		// Create an array to store the holeID for each bin
-		const holeIDs = Array(numBins).fill(null);
-
-		// Store the combined entityName:holeID in the corresponding bin
-		for (const point of points) {
-			const binIndex = Math.floor(point.holeTime / timeRange);
-			holeIDs[binIndex] = holeIDs[binIndex] || []; // Initialize with an empty array if not set
-			holeIDs[binIndex].push(`${point.entityName}:${point.holeID}`);
-		}
-		// Create an array to store the concatenated holeID strings for each bin
-		const holeIDTexts = holeIDs.map((ids) => (ids ? ids.join(", ") : ""));
-
-		// Create text for hover labels using entity name and hole ID
-		const entityholeIDTexts = holeIDs.map((bin) => {
-			if (bin) {
-				return bin
-					.map((combinedID) => {
-						// Split the combinedID into entityName and holeID
-						const [entityName, holeID] = combinedID.split(":");
-						// Find the point associated with both entityName and holeID
-						const point = points.find((p) => p.entityName === entityName && p.holeID === holeID);
-						// Check if point is found to avoid undefined values
-						if (point) {
-							return `${point.entityName}:${point.holeID}`;
-						}
-						return "";
-					})
-					.filter((text) => text) // Filter out any empty strings
-					.join(", ");
-			} else {
-				return "";
-			}
-		});
-
-		const defaultColour = Array(numBins).fill("red");
-
-		const data = [
-			{
-				x: binEdges,
-				y: counts,
-				type: "bar",
-				marker: {
-					color: defaultColour
-				},
-				// Use the holeIDs array as the text property for hover labels
-				text: entityholeIDTexts, //holeIDTexts,
-				hoverinfo: "y+text" // Show the y-value and the custom text when hovering
-			}
-		];
-		const maxHolesPerBin = Math.max(...counts); // Calculate the maximum holes per bin
-		// Add 1 to provide space at the top
-		const maxYValue = maxHolesPerBin + 1;
-		const layout = {
-			title: {
-				text: "Time Window Chart",
-				xanchor: "right",
-				font: {
-					size: 10 // Set the title font size
-				}
-			},
-			plot_bgcolor: noneColour,
-			paper_bgcolor: noneColour,
-			font: {
-				color: textFillColour
-			},
-			modebar: {
-				orientation: "v",
-				bgcolor: noneColour,
-				color: "rgba(255, 0, 0, 0.4)",
-				activecolor: "red",
-				position: "left"
-			},
-			margin: {
-				l: 5,
-				r: 50,
-				b: 25,
-				t: 25,
-				pad: 2
-			},
-			xaxis: {
-				title: {
-					text: "milliseconds (ms)",
-					font: {
-						size: 10 // Set the y-axis label font size
-					}
-				},
-				showgrid: true
-			},
-			yaxis: {
-				title: {
-					text: "Holes Firing",
-					font: {
-						size: 10 // Set the y-axis label font size
-					}
-				},
-				showgrid: true,
-				//set the yaxis title to the right of the chart
-				automargin: true,
-				//set the font size of the yaxis title
-				range: [0, maxYValue - 0.5]
-				// Ensure y-axis values are whole integers
-			},
-			height: 380,
-			width: 280
-		};
-
-		Plotly.newPlot("timeChartContainer", data, layout, config);
-
-		// Add click event listener to the plot
-		const chart = document.getElementById("timeChartContainer");
-		// Outside of your event listener, define a variable to keep track of the last clicked index
-		let lastClickedIndex = null;
-		// Box and Lasso Selection Listener
-		chart.on("plotly_selected", function (eventData) {
-			if (eventData && eventData.points) {
-				const selectedPoints = eventData.points.map((p) => p.pointNumber);
-				const newColours = defaultColour.map((color, index) => (selectedPoints.includes(index) ? "lime" : color));
-				Plotly.restyle("timeChartContainer", { "marker.color": [newColours] });
-
-				timingWindowHolesSelected = selectedPoints
-					.flatMap((index) => {
-						return holeIDs[index]
-							? holeIDs[index].map((combinedID) => {
-									const [entityName, holeID] = combinedID.split(":");
-									return points.find((p) => p.entityName === entityName && p.holeID === holeID);
-							  })
-							: [];
-					})
-					.filter((point) => point !== undefined);
-
-				console.log("Selected Holes:", timingWindowHolesSelected);
-				drawData(points, selectedHole);
-			} else {
-				Plotly.restyle("timeChartContainer", { "marker.color": [defaultColour] });
-				timingWindowHolesSelected = [];
-				drawData(points, selectedHole);
-			}
-		});
-
-		// Single Bar Click Event
-		chart.on("plotly_click", function (data) {
-			if (data.points && data.points.length > 0) {
-				const clickedIndex = data.points[0].pointIndex;
-				const clickedBarColor = "lime";
-				const defaultBarColor = "red";
-				const currentColors = data.points[0].data.marker.color.slice();
-				// Reset the color of the last clicked bar, if any
-				if (lastClickedIndex !== null) {
-					currentColors[lastClickedIndex] = defaultBarColor;
-				}
-
-				// Update the clicked bar color
-				currentColors[clickedIndex] = clickedBarColor;
-
-				// Update the chart to reflect the new colors
-				Plotly.restyle("timeChartContainer", { "marker.color": [currentColors] });
-
-				// Update lastClickedIndex
-				lastClickedIndex = clickedIndex;
-
-				timingWindowHolesSelected = holeIDs[clickedIndex]
-					? holeIDs[clickedIndex]
-							.map((combinedID) => {
-								const [entityName, holeID] = combinedID.split(":");
-								return points.find((p) => p.entityName === entityName && p.holeID === holeID);
-							})
-							.filter((point) => point !== undefined)
-					: [];
-
-				console.log("timingWindowHolesSelected:", timingWindowHolesSelected);
-				drawData(points, selectedHole);
-			} else {
-				timingWindowHolesSelected = [];
-				lastClickedIndex = null;
-				drawData(points, selectedHole);
-			}
-		});
-
-		// Reset Selection Event
-		chart.on("plotly_deselect", function () {
-			// Reset the bar colors to the default color
-			Plotly.restyle("timeChartContainer", { "marker.color": [defaultColour] });
-
-			// Clear any selected holes
-			timingWindowHolesSelected = [];
-			drawData(points, selectedHole);
-
-			// Reset the last clicked index
-			lastClickedIndex = null;
-
-			console.log("Chart reset to unselected state.");
-		});
-	}
-}
-
 // Function to update the play speed
 function updatePlaySpeed() {
 	const playSpeedInput = document.getElementById("playSpeed");
-
-	playSpeed = parseFloat(playSpeedInput.value);
+	playSpeed = parseFloat(playSpeedInput.value); // Ensure playSpeed is a multiplier (e.g., 1 for real-time)
+	const label = "Play Speed : " + playSpeed.toFixed(2);
+	document.getElementById("playSpeedLabel").innerText = label;
 }
+
+// Function to stop the animation
+function stopAnimation() {
+	if (animationInterval) {
+		clearInterval(animationInterval); // Clear the interval
+		animationInterval = null; // Reset the interval reference
+	}
+	isPlaying = false; // Reset playing state
+	timingWindowHolesSelected = []; // Clear selected holes
+	drawData(points, timingWindowHolesSelected); // Redraw without highlights
+	console.log("Animation stopped: Max time reached.");
+}
+
+// Function to start the animation
+function startAnimation() {
+	// Prevent multiple animations from starting
+	if (isPlaying) {
+		console.log("Animation is already playing.");
+		return;
+	}
+
+	// Ensure holeTimes is populated
+	if (!holeTimes || Object.keys(holeTimes).length === 0) {
+		console.error("holeTimes is empty or not populated");
+		return;
+	}
+
+	// Convert to array
+	const holeTimesArray = Object.entries(holeTimes).map(([key, value]) => ({ holeID: key, value }));
+
+	if (holeTimesArray.length === 0) {
+		console.error("holeTimesArray is empty after conversion");
+		return;
+	}
+
+	console.log("holeTimesArray:", holeTimesArray);
+
+	// Proceed with animation logic
+	const maxTime = Math.max(...holeTimesArray.map((time) => time.value));
+	let currentTime = 0;
+	const startTime = performance.now(); // Use high-precision timer
+	const totalAnimationTime = maxTime / playSpeed; // Adjust for play speed
+
+	isPlaying = true; // Set playing state
+	animationInterval = setInterval(() => {
+		const elapsedTime = performance.now() - startTime; // Calculate elapsed time
+		currentTime = elapsedTime * playSpeed; // Adjust current time by playSpeed
+
+		if (currentTime <= maxTime) {
+			timingWindowHolesSelected = points.filter((point) => point.holeTime <= currentTime);
+			drawData(points, timingWindowHolesSelected);
+		} else {
+			stopAnimation(); // Stop animation when max time is reached
+		}
+	}, 16); // Update roughly every frame (60fps = ~16ms)
+}
+
 // Add click event listener to the "Play" button
 const playButton = document.getElementById("play");
 playButton.addEventListener("click", () => {
 	refreshPoints();
-	updatePlaySpeed(); // Update play speed
-	const maxTime = Math.max(...holeTimes.map((time) => time[1])); // Get the max time
-	isPlaying = true;
-	// Clear previous animation interval before starting a new one
-	clearInterval(animationInterval);
-
-	let currentTime = 0;
-	const animationStep = Math.max(0.1, playSpeed); // Minimum animation step of 1 millisecond
-
-	play.textContent = "Playing at " + parseFloat(playSpeed).toFixed(3) + "x speed";
-	//Set the display7 as checked
-	//document.getElementById("display7").checked = true;
-
-	// Start the animation loop
-	animationInterval = setInterval(() => {
-		if (currentTime <= maxTime + (playSpeed + playSpeed * 15)) {
-			timingWindowHolesSelected = points.filter((point) => point.holeTime <= currentTime);
-			drawData(points, timingWindowHolesSelected); // Call drawPoints with the updated selectedHolesArray
-			currentTime += animationStep;
-		} else {
-			//call the stopbutton function
-			stopButton.click();
-			clearInterval(animationInterval); // Stop the animation when maxTime is reached
-		}
-	}, animationStep);
+	updatePlaySpeed();
+	startAnimation(); // Start the animation
 });
 
 // Add click event listener to the "Stop" button
 const stopButton = document.getElementById("stop");
-stopButton.addEventListener("click", () => {
-	clearInterval(animationInterval); // Stop the ongoing animation
-	isPlaying = false;
-	timingWindowHolesSelected = []; // Reset the selected holes array
-	//drawData(points, timingWindowHolesSelected); // Call drawPoints to reset the highlights
-});
+stopButton.addEventListener("click", stopAnimation);
 
 // Add input event listener to the playSpeed input range
 const playSpeedInput = document.getElementById("playSpeed");
 playSpeedInput.addEventListener("input", updatePlaySpeed);
-
-function drawLegend(strokecolour) {
-	//draw a legend at the bottom of the screen in the center
-	//the legend should be for the drawDelauanyTriangles function
-	//the legend should display the roundedAngleDip Ranges and there colours
-	const legend0to5 = "rgb(51, 139, 255)";
-	const legend5to7 = "rgb(0, 102, 204)";
-	const legend7to9 = "rgb(0, 204, 204)";
-	const legend9to12 = "rgb(102, 204, 0)";
-	const legend12to15 = "rgb(204, 204, 0)";
-	const legend15to17 = "rgb(255, 128, 0)";
-	const legend17to20 = "rgb(255, 0, 0)";
-	const legend20above = "rgb(153, 0, 76)";
-	//draw the legend
-	ctx.beginPath();
-	ctx.fill();
-	ctx.font = "14px Arial";
-	ctx.fillStyle = strokecolour;
-	ctx.fillText("Legend Slope", 10, canvas.height / 2 - 70);
-	ctx.fillText("0\u00B0-5\u00B0", 10, canvas.height / 2 - 40);
-	ctx.fillText("5\u00B0-7\u00B0", 10, canvas.height / 2 - 10);
-	ctx.fillText("7\u00B0-9\u00B0", 10, canvas.height / 2 + 20);
-	ctx.fillText("9\u00B0-12\u00B0", 10, canvas.height / 2 + 50);
-	ctx.fillText("12\u00B0-15\u00B0", 10, canvas.height / 2 + 80);
-	ctx.fillText("15\u00B0-17\u00B0", 10, canvas.height / 2 + 110);
-	ctx.fillText("17\u00B0-20\u00B0", 10, canvas.height / 2 + 140);
-	ctx.fillText("20\u00B0+", 10, canvas.height / 2 + 170);
-	ctx.fillStyle = legend0to5;
-	ctx.fillRect(60, canvas.height / 2 - 55, 20, 20);
-	ctx.fillStyle = legend5to7;
-	ctx.fillRect(60, canvas.height / 2 - 25, 20, 20);
-	ctx.fillStyle = legend7to9;
-	ctx.fillRect(60, canvas.height / 2 + 5, 20, 20);
-	ctx.fillStyle = legend9to12;
-	ctx.fillRect(60, canvas.height / 2 + 35, 20, 20);
-	ctx.fillStyle = legend12to15;
-	ctx.fillRect(60, canvas.height / 2 + 65, 20, 20);
-	ctx.fillStyle = legend15to17;
-	ctx.fillRect(60, canvas.height / 2 + 95, 20, 20);
-	ctx.fillStyle = legend17to20;
-	ctx.fillRect(60, canvas.height / 2 + 125, 20, 20);
-	ctx.fillStyle = legend20above;
-	ctx.fillRect(60, canvas.height / 2 + 155, 20, 20);
-	ctx.stroke();
-}
-
-function drawData(points, selectedHole) {
-	clearCanvas();
-	// Disable image smoothing (anti-aliasing)
-	ctx.imageSmoothingEnabled = false;
-
-	if (selectedPoint !== null) {
-		const x = (selectedPoint.pointXLocation - centroidX) * currentScale + canvas.width / 2; // adjust x position
-		const y = (-selectedPoint.pointYLocation + centroidY) * currentScale + canvas.height / 2; // adjust y position
-		drawHiHole(x, y, 10, "rgba(255, 102, 255, 0.3)", "rgba(255, 0, 255, 0.6)");
-	}
-	/*
-	// Highlight selected holes
-	selectedMultipleHoles.forEach(hole => {
-		console.log("Drawing Selected Multiple Holes: entity:", hole.entityName, " hole:", hole.holeID);
-		const x = (hole.pointXLocation - centroidX) * currentScale + canvas.width / 2; // adjust x position
-		const y = (-hole.pointYLocation + centroidY) * currentScale + canvas.height / 2; // adjust y position
-		drawHiHole(x, y, 10, "rgba(255, 102, 255, 0.3)", "rgba(255, 0, 255, 0.6)");
-	});*/
-
-	// Draw the KAD dataset
-	if (kadPointsMap.size > 0) {
-		for (const entity of kadPointsMap.values()) {
-			for (const pointData of entity.data) {
-				const x = (pointData.pointXLocation - centroidX) * currentScale + canvas.width / 2; // adjust x position
-				const y = (-pointData.pointYLocation + centroidY) * currentScale + canvas.height / 2; // adjust y position
-				const z = pointData.pointZLocation;
-				drawKADPoints(x, y, z, pointData.colour);
-			}
-		}
-	}
-
-	// Draw the KAD dataset for lines
-	if (kadLinesMap.size > 0) {
-		for (const entity of kadLinesMap.values()) {
-			for (let i = 0; i < entity.data.length - 1; i++) {
-				const sx = (entity.data[i].pointXLocation - centroidX) * currentScale + canvas.width / 2;
-				const sy = (-entity.data[i].pointYLocation + centroidY) * currentScale + canvas.height / 2;
-				const ex = (entity.data[i + 1].pointXLocation - centroidX) * currentScale + canvas.width / 2;
-				const ey = (-entity.data[i + 1].pointYLocation + centroidY) * currentScale + canvas.height / 2;
-				const sz = entity.data[i].pointZLocation;
-				const ez = entity.data[i + 1].pointZLocation;
-				const lineWidth = entity.data[i].lineWidth;
-				const colour = entity.data[i].colour;
-				drawKADLines(sx, sy, ex, ey, sz, ez, lineWidth, colour);
-			}
-		}
-	}
-	// Draw the KAD dataset for polygons
-	if (kadPolygonsMap.size > 0) {
-		for (const entity of kadPolygonsMap.values()) {
-			if (entity.data.length >= 2) {
-				// Make sure there are at least 2 points to draw a polygon
-				const firstPoint = entity.data[0]; // Get the first point to close the polygon
-				let prevX = (firstPoint.pointXLocation - centroidX) * currentScale + canvas.width / 2;
-				let prevY = (-firstPoint.pointYLocation + centroidY) * currentScale + canvas.height / 2;
-				let prevZ = firstPoint.pointZLocation;
-
-				for (let i = 1; i < entity.data.length; i++) {
-					const currentPoint = entity.data[i];
-					const x = (currentPoint.pointXLocation - centroidX) * currentScale + canvas.width / 2;
-					const y = (-currentPoint.pointYLocation + centroidY) * currentScale + canvas.height / 2;
-					const z = currentPoint.pointZLocation;
-
-					drawKADPolys(prevX, prevY, x, y, prevZ, z, currentPoint.lineWidth, currentPoint.colour);
-
-					prevX = x;
-					prevY = y;
-					prevZ = z;
-				}
-
-				// Close the polygon by drawing a line back to the first point
-				drawKADPolys(prevX, prevY, (firstPoint.pointXLocation - centroidX) * currentScale + canvas.width / 2, (-firstPoint.pointYLocation + centroidY) * currentScale + canvas.height / 2, prevZ, firstPoint.pointZLocation, firstPoint.lineWidth, firstPoint.colour);
-			}
-		}
-	}
-	//draw the KAD dataset for text
-	if (kadTextsMap.size > 0) {
-		for (const entity of kadTextsMap.values()) {
-			for (const pointData of entity.data) {
-				const x = (pointData.pointXLocation - centroidX) * currentScale + canvas.width / 2; // adjust x position
-				const y = (-pointData.pointYLocation + centroidY) * currentScale + canvas.height / 2; // adjust y position
-				const z = pointData.pointZLocation;
-				drawKADTexts(x, y, z, pointData.text, pointData.colour);
-			}
-		}
-	}
-	//draw the KAD dataset for circles
-	if (kadCirclesMap.size > 0) {
-		for (const entity of kadCirclesMap.values()) {
-			for (const pointData of entity.data) {
-				const x = (pointData.pointXLocation - centroidX) * currentScale + canvas.width / 2; // adjust x position
-				const y = (-pointData.pointYLocation + centroidY) * currentScale + canvas.height / 2; // adjust y position
-				const z = pointData.pointZLocation;
-
-				//draw the circles with the radius in the correct scale ie. 100 = 100m and 1 =1m etc
-				drawKADCircles(x, y, z, pointData.radius * currentScale, pointData.lineWidth, pointData.colour);
-			}
-		}
-	}
-
-	/*** DRAW POINTS ***/
-	//display toggles
-	const holeID_display = document.getElementById("display1").checked; //1
-	const holeLen_display = document.getElementById("display2").checked; //2
-	const holeDia_display = document.getElementById("display2A").checked; //3
-	const holeAng_display = document.getElementById("display3").checked; //4
-	const holeDip_display = document.getElementById("display4").checked; //5
-	const holeBea_display = document.getElementById("display5").checked; //6
-	const connector_display = document.getElementById("display5A").checked; //7
-	const delayValue_display = document.getElementById("display6").checked; //8
-	const initiationTime_display = document.getElementById("display6A").checked; //9
-	//const display7 = document.getElementById("display7").checked; //redundant //10
-	//const display7A = document.getElementById("display7A").checked; //redundant  //11
-	//const display7B = document.getElementById("display7B").checked; //redundant //12
-	const contour_display = document.getElementById("display8").checked; //13
-	const slopeMap_display = document.getElementById("display8A").checked; //14
-	const burdenRelief_display = document.getElementById("display8B").checked; //15
-	const firsMovement_display = document.getElementById("display8C").checked; //16
-	const xValue_display = document.getElementById("display9").checked; //17
-	const yValue_display = document.getElementById("display10").checked; //18
-	const zValue_display = document.getElementById("display11").checked; //19
-	const holeType_display = document.getElementById("display12").checked; //20
-	const measuredLength_display = document.getElementById("display13").checked; //21
-	const measuredMass_display = document.getElementById("display14").checked; //22
-	const measuredComment_display = document.getElementById("display15").checked; //23
-
-	// Set the colors dynamically based on the mode
-	ctx.fillStyle = fillColour;
-	ctx.strokeStyle = strokeColour;
-	if (slopeMap_display === true) {
-		const centroid = { x: centroidX, y: centroidY };
-
-		const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
-		drawDelauanySlopeMap(resultTriangles, centroid, strokeColour);
-
-		for (let i = 0; i < resultTriangles.length; i++) {
-			const triangle = resultTriangles[i];
-			drawTriangleAngleText(triangle, centroid, strokeColour);
-		}
-		drawLegend(strokeColour);
-	}
-	ctx.fillStyle = fillColour;
-	ctx.strokeStyle = strokeColour;
-	if (burdenRelief_display === true) {
-		const centroid = { x: centroidX, y: centroidY };
-
-		const { resultTriangles, reliefTriangles } = delaunayTriangles(points, maxEdgeLength); // Recalculate triangles
-		drawDelauanyBurdenRelief(reliefTriangles, centroid, strokeColour);
-		//console.log("AfterDrawing Burden Relief", reliefTriangles);
-		for (let i = 0; i < reliefTriangles.length; i++) {
-			const triangle = reliefTriangles[i];
-			drawTriangleBurdenReliefText(triangle, centroid, strokeColour);
-		}
-		drawReliefLegend(strokeColour);
-	}
-
-	if (firsMovement_display === true) {
-		//console.log("Drawing Direction Arrows");
-		//console.log("First Movement:", directionArrows);
-		connScale = document.getElementById("connSlider").value;
-		for (let i = 0; i < directionArrows.length; i++) {
-			const arrow = directionArrows[i];
-			const startX = (arrow[0] - centroidX) * currentScale + canvas.width / 2;
-			const startY = (-arrow[1] + centroidY) * currentScale + canvas.height / 2;
-			const endX = (arrow[2] - centroidX) * currentScale + canvas.width / 2;
-			const endY = (-arrow[3] + centroidY) * currentScale + canvas.height / 2;
-			const colour = arrow[4];
-			const arrowScale = arrow[5];
-			//console.log("Drawing Arrow:", startX, ", ", startY, ", ", endX, ", ", endY, ", ", colour, ", ", arrowScale);
-			ctx.strokeStyle = colour;
-			ctx.lineWidth = 1;
-			drawDirectionArrow(startX, startY, endX, endY, colour, strokeColour, arrowScale);
-		}
-	}
-
-	if (contour_display === true) {
-		// NEW CODE - Further performance improvements
-		ctx.lineWidth = 3;
-
-		// Move color assignment outside of the loop if possible
-		const firstColor = "magenta";
-		for (let i = 0; i < contourLinesArray.length; i++) {
-			const contourLines = contourLinesArray[i];
-			////console.log("Drawing Contour Lines\n", contourLines);
-
-			ctx.strokeStyle = firstColor;
-
-			for (let j = 0; j < contourLines.length; j++) {
-				const line = contourLines[j];
-
-				const startX = (line[0].x - centroidX) * currentScale + canvas.width / 2;
-				const startY = (-line[0].y + centroidY) * currentScale + canvas.height / 2;
-				const endX = (line[1].x - centroidX) * currentScale + canvas.width / 2;
-				const endY = (-line[1].y + centroidY) * currentScale + canvas.height / 2;
-
-				//Draw the lines
-				ctx.beginPath();
-				ctx.moveTo(startX, startY);
-				ctx.lineTo(endX, endY);
-				ctx.stroke();
-			}
-		}
-	}
-	if (points !== null) {
-		ctx.fillStyle = "red";
-		ctx.font = "12px Arial"; // Set the font size to 12pt Roboto-Regular
-		ctx.fillText("Holes Displayed: " + points.length, 10, canvas.height - 20);
-		for (let i = 0; i < points.length; i++) {
-			const point = points[i];
-			// ctx.fillStyle = "red";
-			// ctx.font = "18px Arial"; // Set the font size to 20px
-			// ctx.fillText("Holes Displayed: " + points.length, 10, canvas.height - 20);
-			const x = (points[i].startXLocation - centroidX) * currentScale + canvas.width / 2; // adjust x position
-			const y = (-points[i].startYLocation + centroidY) * currentScale + canvas.height / 2; // adjust y position
-			const lineStartX = x;
-			const lineStartY = y;
-			const lineEndX = (points[i].endXLocation - centroidX) * currentScale + canvas.width / 2;
-			const lineEndY = (centroidY - points[i].endYLocation) * currentScale + canvas.height / 2;
-
-			toeSizeInMeters = document.getElementById("toeSlider").value;
-			connScale = document.getElementById("connSlider").value;
-			ctx.strokeStyle = strokeColour;
-			if (points[i].holeAngle > 0) {
-				drawTrack(lineStartX, lineStartY, lineEndX, lineEndY, strokeColour);
-			}
-			// Highlight for the animation
-			if (isPlaying && timingWindowHolesSelected != null && timingWindowHolesSelected.find((p) => p.entityName === point.entityName && p.holeID === point.holeID)) {
-				const highlightColor = "rgba(255, 150, 0, 0.7)"; // Color for playing animation
-				const highlightColor2 = "rgba(200, 200, 0, 0.7)"; // Color for playing animation
-				drawHiHole(x, y, 10 + parseInt((point.holeDiameter / 400) * holeScale * currentScale), highlightColor, highlightColor);
-				//drawHexagon(x, y, 10 + parseInt(point.holeDiameter / 200 * holeScale * currentScale), highlightColor, highlightColor);
-				//drawExplosion(x, y, 10, 10 + parseInt(point.holeDiameter / 150 * holeScale * currentScale), 10 + parseInt(point.holeDiameter / 450 * holeScale * currentScale), highlightColor2, highlightColor);
-			}
-
-			// Highlight for timeChart selection
-			if (!isPlaying && timingWindowHolesSelected != null && timingWindowHolesSelected.find((p) => p.entityName === point.entityName && p.holeID === point.holeID)) {
-				drawHiHole(x, y, 10 + parseInt((point.holeDiameter / 500) * holeScale * currentScale), "red", "red");
-			}
-
-			ctx.lineWidth = 1; // Reset stroke width for non-selected holes
-			ctx.strokeStyle = strokeColour; // Reset stroke color for non-selected holes
-			ctx.font = parseInt(currentFontSize) + "px Arial";
-			if (parseFloat(points[i].holeLengthCalculated).toFixed(1) != 0.0) {
-				const radiusInPixels = toeSizeInMeters * currentScale;
-				drawHoleToe(lineEndX, lineEndY, transparentFillColour, strokeColour, radiusInPixels);
-			}
-			// Text offset based on hole diameter
-			const textOffset = parseInt((point.holeDiameter / 1000) * holeScale * currentScale);
-			// Right/Left side of the hole
-			const leftSideToe = parseInt(lineEndX) - textOffset;
-			const rightSideToe = parseInt(lineEndX) + textOffset;
-			const leftSideCollar = parseInt(x) - textOffset;
-			const rightSideCollar = parseInt(x) + textOffset;
-			// Top / Middle / Bottom of the hole
-			const topSideToe = parseInt(lineEndY - textOffset /*- parseInt(currentFontSize / 6)*/);
-			const middleSideToe = parseInt(lineEndY + textOffset + parseInt(currentFontSize / 4));
-			const bottomSideToe = parseInt(lineEndY + textOffset + parseInt(currentFontSize));
-			const topSideCollar = parseInt(y - textOffset /*- parseInt(currentFontSize / 6)*/);
-			const middleSideCollar = parseInt(y /*+ textOffset*/ + parseInt(currentFontSize / 2));
-			const bottomSideCollar = parseInt(y + textOffset + parseInt(currentFontSize));
-
-			//Right side of the hole
-			if (holeID_display === true) {
-				drawText(rightSideCollar, topSideCollar, points[i].holeID, textFillColour);
-			}
-			if (holeDia_display === true) {
-				drawText(rightSideCollar, middleSideCollar, parseFloat(points[i].holeDiameter).toFixed(0), "green");
-			}
-			if (holeLen_display === true) {
-				drawText(rightSideCollar, bottomSideCollar, parseFloat(points[i].holeLengthCalculated).toFixed(1), depthColour);
-			}
-			//Left side of the hole
-			if (holeAng_display) {
-				drawRightAlignedText(leftSideCollar, topSideCollar, parseFloat(points[i].holeAngle).toFixed(0), angleDipColour);
-			}
-			if (holeDip_display) {
-				drawRightAlignedText(leftSideToe, topSideToe, 90 - parseFloat(points[i].holeAngle).toFixed(0), angleDipColour);
-			}
-			if (holeBea_display) {
-				drawRightAlignedText(leftSideToe, bottomSideToe, parseFloat(points[i].holeBearing).toFixed(1), "red");
-			}
-			if (initiationTime_display) {
-				drawRightAlignedText(leftSideCollar, middleSideCollar, point.holeTime, "red");
-			}
-			if (connector_display) {
-				const [splitEntityName, splitFromHoleID] = point.fromHoleID.split(":::");
-				// Find the fromHole using both splitEntityName and splitFromHoleID
-				const fromHole = points.find((point) => point.entityName === splitEntityName && point.holeID === splitFromHoleID);
-				const startPoint = fromHole;
-				const endPoint = points.find((point) => point === points[i]);
-
-				if (startPoint && endPoint) {
-					const startX = (startPoint.startXLocation - centroidX) * currentScale + canvas.width / 2;
-					const startY = (-startPoint.startYLocation + centroidY) * currentScale + canvas.height / 2;
-					const endX = (endPoint.startXLocation - centroidX) * currentScale + canvas.width / 2;
-					const endY = (-endPoint.startYLocation + centroidY) * currentScale + canvas.height / 2;
-
-					const connColour = point.colourHexDecimal;
-					try {
-						drawArrow(startX, startY, endX, endY, connColour, connScale);
-						//console.log(`Arrow drawn from ${fromHole.holeID} to ${point.holeID}`);
-					} catch (error) {
-						console.error("Error drawing arrow:", error);
-					}
-				}
-				//console.log(points);
-			}
-			if (delayValue_display) {
-				const [splitEntityName, splitFromHoleID] = point.fromHoleID.split(":::");
-				// Find the fromHole using both splitEntityName and splitFromHoleID
-				const fromHole = points.find((point) => point.entityName === splitEntityName && point.holeID === splitFromHoleID);
-				const startPoint = fromHole;
-				const endPoint = points.find((point) => point === points[i]);
-
-				if (startPoint && endPoint) {
-					const startX = (startPoint.startXLocation - centroidX) * currentScale + canvas.width / 2;
-					const startY = (-startPoint.startYLocation + centroidY) * currentScale + canvas.height / 2;
-					const endX = (endPoint.startXLocation - centroidX) * currentScale + canvas.width / 2;
-					const endY = (-endPoint.startYLocation + centroidY) * currentScale + canvas.height / 2;
-
-					const connColour = point.colourHexDecimal;
-					const pointDelay = point.timingDelayMilliseconds;
-
-					drawArrowDelayText(startX, startY, endX, endY, connColour, pointDelay);
-				}
-			}
-			if (xValue_display) {
-				drawRightAlignedText(leftSideCollar, topSideCollar, parseFloat(points[i].startXLocation).toFixed(2), textFillColour);
-			}
-			if (yValue_display) {
-				drawRightAlignedText(leftSideCollar, middleSideCollar, parseFloat(points[i].startYLocation).toFixed(2), textFillColour);
-			}
-			if (zValue_display) {
-				drawRightAlignedText(leftSideCollar, bottomSideCollar, parseFloat(points[i].startZLocation).toFixed(2), textFillColour);
-			}
-			if (holeType_display) {
-				drawText(rightSideCollar, middleSideCollar, points[i].holeType, "green");
-			}
-			if (measuredLength_display) {
-				drawRightAlignedText(leftSideCollar, bottomSideToe, points[i].measuredLength, "#FF4400");
-			}
-			if (measuredMass_display) {
-				drawRightAlignedText(leftSideCollar, topSideToe, points[i].measuredMass, "#FF6600");
-			}
-			if (measuredComment_display) {
-				drawText(rightSideCollar, middleSideCollar, points[i].measuredComment, "#FF8800");
-			}
-
-			if (selectedHole != null && selectedHole == points[i]) {
-				if (firstSelectedHole == null) {
-					drawHiHole(x, y, 10 + parseInt((points[i].holeDiameter / 900) * holeScale * currentScale), "rgba(255, 0, 150, 0.2)", "rgba(255, 0, 150, .8)");
-					ctx.fillStyle = "rgba(255, 0, 150, .8)";
-					ctx.font = "18px Arial"; // Set the font size for the selected hole text
-					if (isDiameterEditing || isLengthEditing || isAngleEditing || isBearingEditing || isEastingEditing || isNorthingEditing || isElevationEditing || isDeletingHole) {
-						ctx.fillText("Editing Selected Hole: " + selectedHole.holeID + " in: " + selectedHole.entityName, 2, 20);
-					} else if (isAddingConnector || isAddingMultiConnector) {
-						ctx.fillText("2nd Selected Hole: " + selectedHole.holeID + " in: " + selectedHole.entityName, 2, 20);
-					}
-				} else {
-					drawHiHole(x, y, 10 + parseInt((points[i].holeDiameter / 900) * holeScale * currentScale), "rgba(0, 255, 0, 0.2)", "rgba(0, 190, 0, .8)");
-					ctx.fillStyle = "rgba(0, 190, 0, .8)";
-					ctx.font = "18px Arial"; // Set the font size for the selected hole text
-					ctx.fillText("1st Selected Hole: " + selectedHole.holeID + " in: " + selectedHole.entityName, 2, 20);
-				}
-				ctx.lineWidth = 1; // Reset stroke width for non-selected holes
-				ctx.strokeStyle = strokeColour; // Reset stroke color for non-selected holes
-				if (parseFloat(points[i].holeLengthCalculated).toFixed(1) == 0.0) {
-					drawDummy(x, y, parseInt(0.2 * holeScale * currentScale), strokeColour);
-				} else if (points[i].holeDiameter == 0) {
-					drawNoDiameterHole(x, y, 10, strokeColour);
-				} else {
-					drawHole(x, y, parseInt((points[i].holeDiameter / 1000) * currentScale * holeScale), fillColour, strokeColour);
-				}
-			} else if (selectedMultipleHoles != null && selectedMultipleHoles.find((p) => p.entityName === point.entityName && p.holeID === point.holeID)) {
-				// Highlight for selected holes
-				drawHiHole(x, y, 10 + parseInt((points[i].holeDiameter / 900) * holeScale * currentScale), "rgba(255, 0, 150, 0.2)", "rgba(255, 0, 150, .8)");
-				ctx.fillText("Editing Selected Holes: " + selectedMultipleHoles.holeID, 2, 20);
-				ctx.lineWidth = 1; // Reset stroke width for non-selected holes
-				ctx.strokeStyle = strokeColour; // Reset stroke color for non-selected holes
-				if (parseFloat(points[i].holeLengthCalculated).toFixed(1) == 0.0) {
-					drawDummy(x, y, parseInt(0.2 * holeScale * currentScale), strokeColour);
-				} else if (points[i].holeDiameter == 0) {
-					drawNoDiameterHole(x, y, 10, strokeColour);
-				} else {
-					drawHole(x, y, parseInt((points[i].holeDiameter / 1000) * currentScale * holeScale), fillColour, strokeColour);
-				}
-			} else {
-				ctx.lineWidth = 1; // Reset stroke width for non-selected holes
-				ctx.strokeStyle = strokeColour; // Reset stroke color for non-selected holes
-				if (parseFloat(points[i].holeLengthCalculated).toFixed(1) == 0.0) {
-					drawDummy(x, y, parseInt(0.2 * holeScale * currentScale), strokeColour);
-				} else if (points[i].holeDiameter == 0) {
-					drawNoDiameterHole(x, y, 10, strokeColour);
-				} else {
-					drawHole(x, y, parseInt((points[i].holeDiameter / 1000) * currentScale * holeScale), fillColour, strokeColour);
-				}
-			}
-
-			// Update the font slider value and label with the currentFontSize
-			fontSlider.value = currentFontSize;
-			fontLabel.textContent = "Font Size: " + parseFloat(currentFontSize).toFixed(1) + "px";
-		}
-	}
-}
 
 // Declare the variables at the top of your script
 let lastMouseX = 0;
@@ -8741,7 +6892,7 @@ function getMousePos(evt) {
 		y: (evt.clientY + rect.top) * scaleY
 	};
 }
-function getMouseWorldPos(canvas, evt) {
+function getMouseWorldPos(evt) {
 	const { x, y } = getMousePos(evt);
 	const worldX = (x - canvas.width / 2) / currentScale + centroidX;
 	const worldY = (canvas.height / 2 - y) / currentScale + centroidY;
@@ -8751,17 +6902,6 @@ function getMouseWorldPos(canvas, evt) {
 		y: worldY
 	};
 }
-
-// // Register to the canvas to get mouse position
-// canvas.addEventListener("mousemove", function (evt) {
-// 	let mousePos = getMousePos(evt);
-// 	// Calculate world coordinates
-// 	const worldX = (mousePos.x - canvas.width / 2) / currentScale + centroidX;
-// 	const worldY = (canvas.height / 2 - mousePos.y) / currentScale + centroidY;
-// 	//console.log("Mouse position: " + mousePos.x + "," + mousePos.y);
-// 	document.getElementById("worldCoordinates").innerText = "X: " + worldX.toFixed(3) + ", Y:" + worldY.toFixed(3);
-// 	//drawMousePosition(ctx, mousePos.x, mousePos.y); //draw the mouse position on the canvas
-// });
 
 function openHelp() {
 	shell.open("https://blastingapps.com/kirrausermanual.html");
@@ -8832,9 +6972,9 @@ function refreshPoints() {
 	saveHolesToLocalStorage(points);
 	const playSpeedInput = document.getElementById("playSpeed");
 	if (points.length > 1000) {
-		playSpeedInput.max = 50;
+		playSpeedInput.max = 5;
 	} else {
-		playSpeedInput.max = 15;
+		playSpeedInput.max = 2.5;
 	}
 	// Clear the current points array
 	points = [];
@@ -8846,7 +6986,7 @@ function refreshPoints() {
 		points = parseCSV(csvString, null);
 		//updateCentroids();
 		calculateTimes(points);
-		const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+		const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 		// directionArrows now contains the arrow data for later drawing
 
@@ -8887,7 +7027,7 @@ function loadHolesFromLocalStorage() {
 		console.log(points);
 		updateCentroids();
 		calculateTimes(points);
-		const { contourLinesArray, directionArrows } = recalculateContours(points, deltaX, deltaY);
+		const { contourLinesArray, directionArrows } = recalculateContours(points, maxEdgeLength);
 
 		// directionArrows now contains the arrow data for later drawing
 
@@ -8990,23 +7130,27 @@ function checkLocalStorageData() {
 	const csvStringKAD = localStorage.getItem("kadData");
 	if (csvString || csvStringKAD) {
 		// Show the popup asking the user if they want to continue from where they left off
-		showPopup();
+		const askAboutLocalModal = new SimpleModal({
+			modalId: "askAboutLocalModal",
+			type: "question",
+			title: "Continue from where you left off?",
+			bodyText: "Do you want to use the data in local storage or start a new session?",
+			confirmText: "Continue",
+			confirmCallback: () => {
+				points = loadHolesFromLocalStorage();
+				loadKADFromLocalStorage();
+				updateCentroids();
+				drawData(points, selectedHole);
+			},
+			cancelText: "New",
+			cancelCallback: () => {
+				clearLoadedData();
+				drawData(points, selectedHole);
+			}
+		});
+		askAboutLocalModal.createModal();
+		askAboutLocalModal.show();
 	}
-}
-
-function showPopup() {
-	const userDecision = confirm("Do you want to pick up from where you left off?\n\nPress OK to continue or Cancel to start fresh.");
-	console.log("function showPopup()");
-	if (userDecision === true) {
-		// User chose to continue, load the data from local storage
-		points = loadHolesFromLocalStorage();
-		loadKADFromLocalStorage();
-	} else {
-		// User chose not to continue, do nothing or start fresh
-		clearLoadedData();
-	}
-	//console.log(points);
-	drawData(points, selectedHole);
 }
 
 function clearLoadedData() {
@@ -9125,7 +7269,7 @@ function updateColours(isDarkMode) {
 
 	// Redraw chart and canvas if applicable
 	if (Array.isArray(holeTimes)) {
-		timeChart();
+		timeChart(holeTimes, points, selectedHole); // Call the timeChart function to draw the chart
 	}
 	drawData(points, selectedHole);
 }
@@ -9168,7 +7312,7 @@ window.addEventListener("resize", () => {
 	canvas.width = document.documentElement.clientWidth - canvasAdjustWidth;
 	canvas.height = document.documentElement.clientHeight - document.documentElement.clientHeight * canvasAdjustHeight;
 	if (Array.isArray(holeTimes)) {
-		timeChart();
+		timeChart(holeTimes, points, selectedHole); // Call the timeChart function to draw the chart
 	}
 	saveHolesToLocalStorage(points);
 	saveKADToLocalStorage(mapData);
@@ -9252,8 +7396,7 @@ function openNavRight() {
 		sidenavRight.style.paddingRight = "0px";
 		sidenavRight.style.margin = "0px";
 		//resize the timechart
-		timeChart();
-		newWidthRight = 315;
+		timeChart(holeTimes, points, selectedHole); // Call the timeChart function to draw the chart
 		Plotly.relayout("timeChartContainer", {
 			width: newWidthRight - 50
 		});

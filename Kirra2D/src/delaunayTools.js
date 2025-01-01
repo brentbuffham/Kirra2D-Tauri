@@ -1,19 +1,27 @@
 //delanauyTools.js
 
-import { timeChart } from "./kirra.js";
+import { timeChart } from "./chartsUsingPlotly.js";
+import { selectedHole, setHoleTimes } from "./kirra.js";
+
+// To use these methods in another file, use:
+// import { recalculateContours, delaunayTriangles, delaunayContours, isTriangleValid, simplifyLine } from "./delaunayTools.js";
+
+const fillColour = document.body.classList.contains("dark-mode") ? "black" : "white";
+const maxEdgeLength = 15;
+let holeTimes = {};
 
 /**
  * Recalculate Delaunay triangulation and contours
  * @param {Array} points - The array of points with x, y, z coordinates
- * @param {number} deltaX - The x offset for calculations
- * @param {number} deltaY - The y offset for calculations
+ * @param {number} maxEdgeLength - The maximum edge length for the Delaunay triangulation
  * @returns {Object} - Contains contourLinesArray and directionArrows
  */
-export function recalculateContours(points, deltaX, deltaY) {
+export function recalculateContours(points, maxEdgeLength) {
+	// console.log("Recalculating contours using points: ", points, " | maxEdgeLength:", maxEdgeLength);
 	try {
 		const contourData = [];
 		const holeTimes = calculateTimes(points);
-		timeChart();
+		timeChart(holeTimes, points, selectedHole);
 
 		// Prepare contour data
 		for (let i = 0; i < holeTimes.length; i++) {
@@ -45,13 +53,15 @@ export function recalculateContours(points, deltaX, deltaY) {
 
 		// Iterate over contour levels
 		for (let contourLevel = 0; contourLevel <= maxHoleTime; contourLevel += interval) {
-			const { contourLines, directionArrows } = delaunayContours(contourData, contourLevel, maxEdgeLength);
+			const { contourLines, directionArrows: arrows } = delaunayContours(contourData, contourLevel, maxEdgeLength);
+			directionArrows = arrows;
 			const epsilon = 1; // Adjust this value to control the level of simplification
 			const simplifiedContourLines = contourLines.map((line) => simplifyLine(line, epsilon));
 			contourLinesArray.push(simplifiedContourLines);
+			//directionArrows.push(directions);
 
-			//console.log("contourLinesArray: ", contourLinesArray);
-			//console.log("directionArrows: ", directionArrows);
+			// console.log("contourLinesArray: ", contourLinesArray);
+			// console.log("directionArrows: ", directionArrows);
 		}
 		// Return both contour lines
 		return { contourLinesArray, directionArrows };
@@ -60,7 +70,6 @@ export function recalculateContours(points, deltaX, deltaY) {
 	}
 }
 
-let maxEdgeLength = 15;
 /**
  * Function to generate a Delaunay triangulation from a set of 2D points, and
  * filter out triangles with edges that are longer than a specified maximum edge length.
@@ -256,8 +265,9 @@ export function delaunayContourBurdenRelief(contourData, maxEdgeLength, angleOfI
 
 	return reliefResults;
 }
-let firstMovementSize = document.getElementById("firstMovementSlider").value;
+
 export function delaunayContours(contourData, contourLevel, maxEdgeLength) {
+	let firstMovementSize = document.getElementById("firstMovementSlider").value;
 	// Filter out points where holeTime is null
 	const filteredContourData = contourData.filter((point) => point.holeTime !== null);
 
@@ -306,10 +316,14 @@ export function delaunayContours(contourData, contourLevel, maxEdgeLength) {
 
 		// Get the triangle's surface area
 		const surfaceArea = Math.abs((p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y)) / 2);
+		const strokeColour = document.body.classList.contains("dark-mode") ? "white" : "black";
+
+		let arrow = [centroidX, centroidY, arrowEndX, arrowEndY, "goldenrod", strokeColour, firstMovementSize];
+		// console.log("Arrow: ", arrow);
 
 		if (surfaceArea > 0.2) {
 			// Store the arrow (start at the centroid, end at the calculated slope direction)
-			directionArrows.push([centroidX, centroidY, arrowEndX, arrowEndY, "goldenrod", firstMovementSize]);
+			directionArrows.push(arrow);
 		}
 		// Process the contour lines (unchanged logic)
 		for (let j = 0; j < 3; j++) {
@@ -330,21 +344,14 @@ export function delaunayContours(contourData, contourLevel, maxEdgeLength) {
 			contourLines.push(contourLine);
 		}
 	}
-
-	const interval = 1; // Keep every arrow
-	directionArrows = directionArrows.filter((arrow, index) => index % interval === 0);
-
 	// Return both contour lines and the newly created arrows
 	return { contourLines, directionArrows };
 }
-
-let holeTimes;
 
 export function calculateTimes(points) {
 	//console.log("Calculating times...");
 	try {
 		const surfaces = {};
-		holeTimes = {};
 
 		// Build initial structures for surfaces and hole times
 		for (let i = 0; i < points.length; i++) {
@@ -394,6 +401,7 @@ export function calculateTimes(points) {
 				points[pointIndex].holeTime = time;
 			}
 		}
+		setHoleTimes(holeTimes);
 
 		return result;
 	} catch (err) {
