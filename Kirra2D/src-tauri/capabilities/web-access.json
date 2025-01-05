@@ -1,0 +1,11 @@
+{
+  "identifier": "web-access",
+  "description": "Allows web access to Kirra User Manual",
+  "windows": ["main"],
+  "remote": {
+    "urls": 
+        ["https://blastingapps.com/kirrausermanual.html"]
+  },
+  "permissions": []
+  
+}

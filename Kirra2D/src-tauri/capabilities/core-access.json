@@ -1,0 +1,16 @@
+{
+  "identifier": "core-access",
+  "description": "Allows basic Tauri core functionality",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:app:default",
+    "core:event:default",
+    "core:window:default",
+    "core:menu:default",
+    "core:tray:default",
+    "core:path:default",
+    "core:resources:default",
+    "core:webview:default"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+    "identifier": "fs-access",
+    "description": "Allows file system access for read and write operations",
+    "windows": ["main"],
+    "permissions": [
+        {
+            "identifier": "fs:allow-read",
+            "allow": [{ "path": "$HOME/*" }]
+        },
+        {
+            "identifier": "fs:allow-write",
+            "allow": [{ "path": "$HOME/*" }]
+        }
+    ]
+}
