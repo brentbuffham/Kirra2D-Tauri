@@ -2,8 +2,8 @@
 
 #floating-toolbar {
     position: absolute;
-    top: 50px;
-    left: 10px;
+    top: 100px;
+    left: 15px;
     display: flex;
     flex-direction: column;
     align-items: center;
