@@ -1,194 +1,1712 @@
 <!DOCTYPE html>
 <html lang="en">
+	<!--
+    Description: This file contains the main UI for the Kirra App
+	Author: Brent Buffham
+	Last Modified: "20250705.2350AWST"
+-->
 
 	<head>
 		<meta charset="UTF-8">
 		<title>Kirra</title>
+		<!-- Add meta tag for "seo"-->
+		<meta name="description" content="Kirra 2D: is a blasting pattern design application for mining and construction, supporting CSV, DXF, and KAD file formats. Create, edit, and export blast patterns easily.">
+		<meta name="keywords" content="Kirra, triangulation, Delaunay, DXF, parser, visualization, engineering, surveying, design, Plotly, d3, JavaScript">
+		<meta name="author" content="Brent Buffham">
+		<meta name="robots" content="index, follow">
+		<meta property="og:title" content="Kirra 2D">
+		<meta property="og:description" content="Explore Kirra's advanced tools for triangulation, DXF parsing, and interactive data visualization.">
+		<meta property="og:type" content="website">
+		<meta property="og:url" content="https://blastingapps.com/kirra.html">
+		<meta property="og:image" content="https://blastingapps.com/kirra-icon.png">
+		<meta name="twitter:card" content="https://blastingapps.com/Kirra%20Head%20Shot%20Water%20colour.png">
+		<meta name="twitter:title" content="Kirra 2D">
+		<meta name="twitter:description" content="Kirra 2D: is a blasting pattern design application for mining and construction, supporting CSV, DXF, and KAD file formats. Create, edit, and export blast patterns easily.">
+		<meta name="twitter:image" content="https://blastingapps.com/Kirra%20Head%20Shot%20Water%20colour.png">
+
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<link rel="stylesheet" href="styles.css">
-		<!-- Libraies -->
+		<!-- Device Dynamic Screens -->
+		<script>
+			// Fix 100vh on mobile: set a custom --vh unit
+			window.addEventListener('resize', () => {
+				document.documentElement.style.setProperty('--vh', window.innerHeight * 0.01 + "px");
+			});
+			window.dispatchEvent(new Event('resize'));
+		</script>
+
+		<!-- LOCAL OFFLINE LIBRARIES -->
+		<!-- Triangulation libraries -->
 		<script src="assets/libs/d3-delaunay.min.js"></script>
 		<script src="assets/libs/delaunator.min.js"></script>
+		<!-- DXF Parser -->
 		<script src="assets/libs/dxf-parser.min.js"></script>
-		<script src="assets/libs/bootstrap.bundle.min.js"></script>
-		<link rel="stylesheet" href="assets/libs/bootstrap.min.css">
+		<!-- Sweet Alert -->
 		<script src="assets/libs/sweetalert2.all.min.js"></script>
-		<link rel="stylesheet" href="assets/libs/sweetalert2.min.css">
-		<script src="assets/libs/plotly-latest.min.js"></script>
+		<!-- Plotly -->
+		<script src="assets/libs/plotly-2.27.0.min.js"></script>
+		<!-- PapaParse for CSV -->
+		<script src="assets/libs/papaparse.min.js"></script>
+		<!-- Crypto libraries -->
 		<script src="assets/libs/crypto-js.js"></script>
 		<script src="assets/libs/md5.js"></script>
 		<script src="assets/libs/sha1.js"></script>
 		<script src="assets/libs/sha256.js"></script>
+		<!-- JSColor -->
 		<script src="assets/libs/jscolor.min.js"></script>
-		<!-- Custom JS Scripts -->
+		<!-- Turf -->
+		<script src="assets/libs/turf.min.js"></script>
+		<!-- D3 Polygon -->
+		<script src="assets/libs/d3-polygon@3"></script>
+		<!-- Clipper -->
+		<script src="assets/libs/clipper.js"></script>
+		<!-- Additional libraries that might be needed -->
+		<script src="assets/libs/geotiff.js"></script>
+		<script src="assets/libs/proj4.js"></script>
+		<script src="assets/libs/print.min.js"></script>
+		<script src="assets/libs/jspdf.umd.min.js"></script>
+		<script src="assets/libs/html2canvas.min.js"></script>
+		<script src="assets/libs/pdfmake.min.js"></script>
+		<script src="assets/libs/vfs_fonts.js"></script>
+
+
+		<!-- Load all the scripts before the stylesheet -->
+		<link rel="stylesheet" href="kirra.css">
 
 		<script>
 			// These options apply to all color pickers on the page
 			jscolor.presets.default = {
 				format: 'rgb',
 				palette: [
-					'#990000', '#FF0000', '#FFAA00', '#CCCC00', '#FFF000', '#00ff00', '#00bb00', '#00bbff', '#0055FF', '#aa00ff',
-					'#F1F1F1', '#E3E3E3', '#C6C6C6', '#7F7F7F', '#555555', '#393939', '#1C1C1C', '#00FFFF', '#006699', '#FF00FF'
+					'#FF0000', '#FFAA00', '#FFF000', '#00ff00', '#00ffff', '#0000FF', '#FF00FF',
+					'#AA0000', '#FF5500', '#BBBB00', '#009900', '#007F7F', '#000099', '#7F007F',
+					'#660000', '#883300', '#555500', '#004400', '#004444', '#000044', '#440044',
+					'#111111', '#333333', '#666666', '#999999', '#BBBBBB', '#CCCCCC', '#EEEEEE'
 				]
 			};
+		</script>
+
+		<script>
+			const translations = {
+				"en": {
+					"translation": {
+						// Page title
+						"title": "Kirra",
+
+						// Menu bar buttons
+						"help_button": "Help",
+						"zoom_in_button": "Zoom In",
+						"zoom_out_button": "Zoom Out",
+						"go_back_button": "Go Back",
+						"select_language": "Select Language",
+
+						// Dark mode toggle
+						"dark_mode": "Toggle mode",
+
+						// Display option tooltips
+						"display_hole_id_title": "Hole ID",
+						"display_hole_length_title": "Hole Length",
+						"display_hole_diameter_title": "Hole Diameter",
+						"display_angle_title": "Hole Angle",
+						"display_dip_title": "Hole Dip",
+						"display_bearing_title": "Hole Bearing",
+						"display_subdrill_title": "Hole Subdrill",
+						"display_ties_title": "Ties",
+						"display_connectors_title": "Delay Value",
+						"display_times_only_title": "Hole Time",
+						"display_contours_title": "Contours",
+						"display_slope_title": "Slope",
+						"display_relief_title": "Relief",
+						"display_direction_title": "First Movement",
+						"display_xlocation_title": "Hole X Location",
+						"display_ylocation_title": "Hole Y Location",
+						"display_zlocation_title": "Hole Z Location",
+						"display_hole_type_title": "Hole Type",
+						"display_measure_title": "Measured Length",
+						"display_mass_title": "Measured Mass",
+						"display_comment_title": "Comment",
+						"display_voronoi_title": "Voronoi",
+
+						// Left panel sections
+						"open_import": "Open or Import files",
+
+						// File input titles and tooltips
+						"file_holes_kad_title": "File Holes and KAD Input",
+						"custom_csv_title": "Custom CSV Import",
+						"file_dxf_title": "File DXF Input",
+						"measured_values_title": "Measured Values Input",
+						"file_surface_title": "File Surface Input (3 columns {X,Y,Z})",
+						"file_geotiff_title": "File Geotiff Input",
+
+						// File input alt text
+						"load_holes_kad_alt": "Load Holes & KAD",
+						"load_csv_alt": "Load CSV",
+						"load_dxf_alt": "Load DXF",
+						"load_measured_alt": "Load Measured Values",
+						"load_surface_alt": "Load Surface",
+						"load_geotiff_alt": "Load Geotiff",
+
+						// Plus/Minus Holes section
+						"plus_minus_holes": "+ or - Holes",
+						"add_pattern_label": "Add Pattern:",
+						"add_hole_label": "Adding Hole:",
+						"delete_label": "Delete :",
+						"delete_hole_button": "Hole",
+						"delete_pattern_button": "Pattern",
+						"delete_all_patterns_button": "All",
+						"renumber_holes_label": "Renumber when deleting:",
+						"delete_renumber_start_label": "Start at:",
+
+						// Edit Holes section
+						"edit_holes": "Edit Holes",
+						"dialog_edit": "Dialog Edit",
+						"edit_blast_name_label": "Edit Blast Name",
+						"edit_length_popup_label": "Edit Length with dialog",
+						"edit_hole_type_popup_label": "Edit Hole Type with dialog",
+						"slider_edit": "Slider Edit",
+						"allow_holes_edited": "Allow holes to be edited",
+						"selection_mode_label": "Multiple select with slider edits",
+						"hole_easting_label": "X :",
+						"hole_northing_label": "Y :",
+						"hole_elevation_label": "Z :",
+						"hole_diameter_label": "Diameter :",
+						"hole_length_label": "Length :",
+						"hole_angle_label": "Angle :",
+						"hole_bearing_label": "Bearing :",
+						"hole_subdrill_label": "Subdrill :",
+
+						// Record Actuals section
+						"record_actuals": "Record Actuals",
+						"dialog_record": "Dialog Record",
+						"record_length_popup_label": "Record Length with dialog",
+						"record_mass_popup_label": "Record Mass with dialog",
+						"record_comment_popup_label": "Record Comment with dialog",
+
+						// View Controls section
+						"view_controls": "View Controls & Snap",
+						"font_size_label": "Font Size (pt): 10pt",
+						"tie_size_label": "Tie Size (units): 3.0",
+						"toe_size_label": "Toe Size (m): 0.5m",
+						"hole_adjust_label": "Hole Adjust (units): 2.0",
+						"interval_label": "Interval (ms): 100ms",
+						"first_movement_label": "First Movement Size (units): 2.0",
+						"snap_tolerance_label": "Snap Tolerance (px): 15px",
+
+						// Output Files section
+						"output_files": "Output Files",
+						"save_holes_label": "Save Holes to a File (importable)",
+						"save_holes_button": "KIRRA - Outputs a 14-column *.csv file for saving blasts with names",
+						"save_kad_label": "Save Drawing to a File (importable)",
+						"save_kad_button": "KAD - Outputs a Kirra App Drawing *.kad file for saving drawings",
+						"save_all_label": "Save All Hole Aspects to a File (shareable)",
+						"save_all_button": "EXTRA - Includes Length, Dip, Angle, Bearing, and Initiation Time",
+						"save_measures_label": "Save Actual Values to a File (shareable)",
+						"save_measures_button": "EXTRA - Outputs measured depth and charge kilograms",
+						"export_holes_dxf_label": "Export Holes to DXF",
+						"export_holes_dxf_button": "Export Holes to DXF, Collar, Track and Hole Id as Text Object",
+						"export_drawing_dxf_label": "Export Drawing to DXF",
+						"export_drawing_dxf_button": "Export Drawing to DXF, points, lines, poly, circles, text",
+						"export_epiroc_label": "Export for Epiroc Surface Manager",
+						"export_epiroc_button": "EPIROC - XML - IREDES XML including diameter and hole type",
+						"export_minestar_label": "Export for MineStar AQM",
+						"export_minestar_button": "MINESTAR - AQM - Outputs up to 11 columns (Angle, Azimuth, Diameter, etc.)",
+
+						// About section
+						"about_title": "About",
+						"developer_mode": "Developer Mode",
+						"about_content": "Created by Brent Buffham © 2023.",
+
+						// Right panel sections
+						"connectors": "Connectors",
+						"single_tie_label": "Tie-in one by one:",
+						"multi_tie_label": "Tie-in all in a line:",
+						"delay_label": "Delay:",
+						"color_label": "Color",
+						"connect_distance_label": "Connect Distance :",
+
+						// Animate section
+						"animate_firing": "Animate Firing",
+						"play_button": "PLAY @ 1.0x",
+						"stop_button": "STOP",
+
+						// Time Window section
+						"time_window": "Time Window",
+						"time_range_label": "Time window : 8 ms",
+						"time_offset_label": "Time Offset : 0 ms",
+						"hole_count_label": "Hole Count",
+						"measured_mass_label": "Measured Charge",
+
+						// Drawing Tools section
+						"drawing_tools": "Drawing Tools",
+						"elevation_label": "Elevation (z):",
+						"drawing_color_label": "Color:",
+						"line_width_label": "Line Width:",
+						"point_draw_label": "Point Drawing:",
+						"line_draw_label": "Line Drawing:",
+						"poly_draw_label": "Polygon Drawing:",
+						"circle_draw_label": "Circle Drawing:",
+						"drawing_radius_label": "Radius(m):",
+						"text_draw_label": "Text Drawing:",
+						"text_label": "Text:",
+						"common_math_label": "Use \"=\" at the front of the text to use JS Math or do calculations.",
+						"common_math_examples": "Math.PI: Math.E: Math.max(): Math.min(): Math.round(): Math.floor(): Math.ceil(): Math.random(): Math.sqrt(): Math.pow(): Math.abs(): Math.sin(): Math.cos(): Math.tan(): Math.asin(): Math.acos(): Math.atan(): Math.log(): .toFixed()\n\nThe mass of a charge length can be calculated ie.\n=((Math.PI * Math.pow((229/2), 2)*10 * 1.18) / 1000).toFixed(2)",
+						"create_radii_button": "Create Radii from Holes",
+						"radii_steps_label": "Radii Steps:",
+						"drawing_polygon_radius_label": "Radius(m):",
+
+						// Drawing Removal section
+						"drawing_removal": "Drawing Removal",
+						"drawing_delete_label": "Drawing Delete:",
+						"delete_point_button": "Point",
+						"delete_object_button": "Object",
+						"delete_all_button": "All",
+
+						// Voronoi section
+						"voronoi_options": "Voronoi Display Options and Settings",
+						"voronoi_display_label": "Voronoi Display Options:",
+						"voronoi_legend_label": "Voronoi Legend:",
+						"voronoi_boundary_label": "Use Toe Radii Boundary:",
+						"powder_factor": "Powder Factor (mass/volume)",
+						"mass": "Mass",
+						"volume": "Volume",
+						"area": "Area",
+						"measured_length": "Measured Length",
+						"designed_length": "Designed Length",
+						"hole_firing_time": "Hole Firing Time",
+						"heelan_vibration": "Heelan Vibration",
+						"unknown": "unknown",
+						"min_max": "Min-Max",
+						"fixed": "Fixed",
+
+						// Support section
+						"buy_coffee_alt": "Show support with a cash donation",
+						"buy_coffee_text": "Buy Brent a coffee",
+						"report_bug_button": "Report Bug / Request Feature",
+
+						// Floating toolbar
+						"drag_label": "═════",
+						"select_label": "Select",
+						"select_pointer": "selectPointer",
+						"select_by_polygon": "selectByPolygon",
+						"create_label": "Create",
+						"pattern_in_polygon": "Pattern in Polygon",
+						"holes_along_line": "Holes Along Line",
+						"holes_along_polyline": "Holes Along PolyLine",
+						"modify_label": "Modify",
+						"move_to": "Move To",
+						"hole_bearing": "Hole Bearing",
+						"assign_surface": "Assign Surface",
+						"assign_grade": "Assign Grade",
+						"connect_label": "Connect",
+						"tie_connect": "Tie Connect",
+						"tie_connect_multi": "Tie Connect Multi",
+						"connector_color": "Connector Color",
+						"measure_label": "Measure",
+						"ruler": "Ruler",
+						"ruler_protractor": "Ruler Protractor",
+						"view_label": "View",
+						"reset_view": "Reset View"
+					}
+				}, "zh_CN": {
+					"translation": {
+						// Page title
+						"title": "Kirra",
+
+						// Menu bar buttons
+						"help_button": "帮助",
+						"zoom_in_button": "放大",
+						"zoom_out_button": "缩小",
+						"go_back_button": "返回",
+						"select_language": "选择语言",
+
+						// Dark mode toggle
+						"dark_mode": "切换模式",
+
+						// Display option tooltips
+						"display_hole_id_title": "炮孔编号",
+						"display_hole_length_title": "炮孔长度",
+						"display_hole_diameter_title": "炮孔直径",
+						"display_angle_title": "炮孔角度",
+						"display_dip_title": "炮孔倾角",
+						"display_bearing_title": "炮孔方位角",
+						"display_subdrill_title": "超钻",
+						"display_ties_title": "连接",
+						"display_connectors_title": "延时值",
+						"display_times_only_title": "炮孔时间",
+						"display_contours_title": "等高线",
+						"display_slope_title": "坡度",
+						"display_relief_title": "地形",
+						"display_direction_title": "首次移动",
+						"display_xlocation_title": "炮孔X坐标",
+						"display_ylocation_title": "炮孔Y坐标",
+						"display_zlocation_title": "炮孔Z坐标",
+						"display_hole_type_title": "炮孔类型",
+						"display_measure_title": "实测长度",
+						"display_mass_title": "实测装药量",
+						"display_comment_title": "注释",
+						"display_voronoi_title": "泰森多边形",
+
+						// Left panel sections
+						"open_import": "打开或导入文件",
+
+						// File input titles and tooltips
+						"file_holes_kad_title": "炮孔和KAD文件输入",
+						"custom_csv_title": "自定义CSV导入",
+						"file_dxf_title": "DXF文件输入",
+						"measured_values_title": "实测值输入",
+						"file_surface_title": "地表文件输入（3列{X,Y,Z}）",
+						"file_geotiff_title": "地理栅格文件输入",
+
+						// File input alt text
+						"load_holes_kad_alt": "加载炮孔和KAD",
+						"load_csv_alt": "加载CSV",
+						"load_dxf_alt": "加载DXF",
+						"load_measured_alt": "加载实测值",
+						"load_surface_alt": "加载地表",
+						"load_geotiff_alt": "加载地理栅格",
+
+						// Plus/Minus Holes section
+						"plus_minus_holes": "增减炮孔",
+						"add_pattern_label": "添加模式:",
+						"add_hole_label": "添加炮孔:",
+						"delete_label": "删除:",
+						"delete_hole_button": "炮孔",
+						"delete_pattern_button": "模式",
+						"delete_all_patterns_button": "全部",
+						"renumber_holes_label": "删除时重新编号:",
+						"delete_renumber_start_label": "起始编号:",
+
+						// Edit Holes section
+						"edit_holes": "编辑炮孔",
+						"dialog_edit": "对话框编辑",
+						"edit_blast_name_label": "编辑爆破名称",
+						"edit_length_popup_label": "用对话框编辑长度",
+						"edit_hole_type_popup_label": "用对话框编辑炮孔类型",
+						"slider_edit": "滑块编辑",
+						"allow_holes_edited": "允许编辑炮孔",
+						"selection_mode_label": "多选滑块编辑模式",
+						"hole_easting_label": "X:",
+						"hole_northing_label": "Y:",
+						"hole_elevation_label": "Z:",
+						"hole_diameter_label": "直径:",
+						"hole_length_label": "长度:",
+						"hole_angle_label": "角度:",
+						"hole_bearing_label": "方位角:",
+						"hole_subdrill_label": "超钻:",
+
+						// Record Actuals section
+						"record_actuals": "记录实际值",
+						"dialog_record": "对话框记录",
+						"record_length_popup_label": "用对话框记录长度",
+						"record_mass_popup_label": "用对话框记录装药量",
+						"record_comment_popup_label": "用对话框记录注释",
+
+						// View Controls section
+						"view_controls": "视图控制和捕捉",
+						"font_size_label": "字体大小(pt): 10pt",
+						"tie_size_label": "连接大小(单位): 3.0",
+						"toe_size_label": "孔底大小(m): 0.5m",
+						"hole_adjust_label": "炮孔调整(单位): 2.0",
+						"interval_label": "间隔(ms): 100ms",
+						"first_movement_label": "首次移动大小(单位): 2.0",
+						"snap_tolerance_label": "捕捉容差(px): 15px",
+
+						// Output Files section
+						"output_files": "输出文件",
+						"save_holes_label": "保存炮孔到文件（可导入）",
+						"save_holes_button": "KIRRA - 输出14列*.csv文件，用于保存爆破设计",
+						"save_kad_label": "保存图形到文件（可导入）",
+						"save_kad_button": "KAD - 输出Kirra应用图形*.kad文件",
+						"save_all_label": "保存所有炮孔信息到文件（可共享）",
+						"save_all_button": "扩展 - 包含长度、倾角、角度、方位角和起爆时间",
+						"save_measures_label": "保存实际值到文件（可共享）",
+						"save_measures_button": "扩展 - 输出实测深度和装药公斤数",
+						"export_holes_dxf_label": "导出炮孔到DXF",
+						"export_holes_dxf_button": "导出炮孔到DXF，包含孔口、轨迹和炮孔编号文本",
+						"export_drawing_dxf_label": "导出图形到DXF",
+						"export_drawing_dxf_button": "导出图形到DXF，包含点、线、多边形、圆、文本",
+						"export_epiroc_label": "导出到Epiroc地表管理器",
+						"export_epiroc_button": "EPIROC - XML - IREDES XML包含直径和炮孔类型",
+						"export_minestar_label": "导出到MineStar AQM",
+						"export_minestar_button": "MINESTAR - AQM - 输出最多11列（角度、方位角、直径等）",
+
+						// About section
+						"about_title": "关于",
+						"developer_mode": "开发者模式",
+						"about_content": "由Brent Buffham创建 © 2023。",
+
+						// Right panel sections
+						"connectors": "连接器",
+						"single_tie_label": "逐个连接:",
+						"multi_tie_label": "线性连接:",
+						"delay_label": "延时:",
+						"color_label": "颜色",
+						"connect_distance_label": "连接距离:",
+
+						// Animate section
+						"animate_firing": "动画播放",
+						"play_button": "播放 @ 1.0x",
+						"stop_button": "停止",
+
+						// Time Window section
+						"time_window": "时间窗口",
+						"time_range_label": "时间窗口: 8 ms",
+						"time_offset_label": "时间偏移: 0 ms",
+						"hole_count_label": "炮孔数量",
+						"measured_mass_label": "实测装药量",
+
+						// Drawing Tools section
+						"drawing_tools": "绘图工具",
+						"elevation_label": "标高(z):",
+						"drawing_color_label": "颜色:",
+						"line_width_label": "线宽:",
+						"point_draw_label": "点绘制:",
+						"line_draw_label": "线绘制:",
+						"poly_draw_label": "多边形绘制:",
+						"circle_draw_label": "圆绘制:",
+						"drawing_radius_label": "半径(m):",
+						"text_draw_label": "文本绘制:",
+						"text_label": "文本:",
+						"common_math_label": "在文本前使用\"=\"来使用JS数学运算或计算。",
+						"common_math_examples": "Math.PI: Math.E: Math.max(): Math.min(): Math.round(): Math.floor(): Math.ceil(): Math.random(): Math.sqrt(): Math.pow(): Math.abs(): Math.sin(): Math.cos(): Math.tan(): Math.asin(): Math.acos(): Math.atan(): Math.log(): .toFixed()\\n\\n装药长度质量计算示例:\\n=((Math.PI * Math.pow((229/2), 2)*10 * 1.18) / 1000).toFixed(2)",
+						"create_radii_button": "从炮孔创建半径",
+						"radii_steps_label": "半径步数:",
+						"drawing_polygon_radius_label": "半径(m):",
+
+						// Drawing Removal section
+						"drawing_removal": "删除绘图",
+						"drawing_delete_label": "绘图删除:",
+						"delete_point_button": "点",
+						"delete_object_button": "对象",
+						"delete_all_button": "全部",
+
+						// Voronoi section
+						"voronoi_options": "泰森多边形显示选项和设置",
+						"voronoi_display_label": "泰森多边形显示选项:",
+						"voronoi_legend_label": "泰森多边形图例:",
+						"voronoi_boundary_label": "使用孔底半径边界:",
+						"powder_factor": "炸药单耗（质量/体积）",
+						"mass": "质量",
+						"volume": "体积",
+						"area": "面积",
+						"measured_length": "实测长度",
+						"designed_length": "设计长度",
+						"hole_firing_time": "炮孔起爆时间",
+						"heelan_vibration": "Heelan振动",
+						"unknown": "未知",
+						"min_max": "最小-最大",
+						"fixed": "固定",
+
+						// Support section
+						"buy_coffee_alt": "通过现金捐赠表示支持",
+						"buy_coffee_text": "给Brent买杯咖啡",
+						"report_bug_button": "报告错误/请求功能",
+
+						// Floating toolbar
+						"drag_label": "═════",
+						"select_label": "选择",
+						"select_pointer": "选择指针",
+						"select_by_polygon": "多边形选择",
+						"create_label": "创建",
+						"pattern_in_polygon": "多边形内模式",
+						"holes_along_line": "沿线炮孔",
+						"holes_along_polyline": "沿多线炮孔",
+						"modify_label": "修改",
+						"move_to": "移动到",
+						"hole_bearing": "炮孔方位角",
+						"assign_surface": "分配地表",
+						"assign_grade": "分配坡度",
+						"connect_label": "连接",
+						"tie_connect": "连接",
+						"tie_connect_multi": "多重连接",
+						"connector_color": "连接器颜色",
+						"measure_label": "测量",
+						"ruler": "尺子",
+						"ruler_protractor": "量角器",
+						"view_label": "视图",
+						"reset_view": "重置视图"
+					}
+				},
+				"fr": {
+					"translation": {
+						// Page title
+						"title": "Kirra",
+
+						// Menu bar buttons
+						"help_button": "Aide",
+						"zoom_in_button": "Zoom avant",
+						"zoom_out_button": "Zoom arrière",
+						"go_back_button": "Retour",
+						"select_language": "Sélectionner la langue",
+
+						// Dark mode toggle
+						"dark_mode": "Basculer le mode",
+
+						// Display option tooltips
+						"display_hole_id_title": "ID du trou",
+						"display_hole_length_title": "Longueur du trou",
+						"display_hole_diameter_title": "Diamètre du trou",
+						"display_angle_title": "Angle du trou",
+						"display_dip_title": "Inclinaison du trou",
+						"display_bearing_title": "Azimut du trou",
+						"display_subdrill_title": "Sous-forage",
+						"display_ties_title": "Liaisons",
+						"display_connectors_title": "Valeur de retard",
+						"display_times_only_title": "Temps du trou",
+						"display_contours_title": "Contours",
+						"display_slope_title": "Pente",
+						"display_relief_title": "Relief",
+						"display_direction_title": "Premier mouvement",
+						"display_xlocation_title": "Position X du trou",
+						"display_ylocation_title": "Position Y du trou",
+						"display_zlocation_title": "Position Z du trou",
+						"display_hole_type_title": "Type de trou",
+						"display_measure_title": "Longueur mesurée",
+						"display_mass_title": "Masse mesurée",
+						"display_comment_title": "Commentaire",
+						"display_voronoi_title": "Voronoï",
+
+						// Left panel sections
+						"open_import": "Ouvrir ou importer des fichiers",
+
+						// File input titles and tooltips
+						"file_holes_kad_title": "Entrée de fichiers trous et KAD",
+						"custom_csv_title": "Import CSV personnalisé",
+						"file_dxf_title": "Entrée de fichier DXF",
+						"measured_values_title": "Entrée de valeurs mesurées",
+						"file_surface_title": "Entrée de fichier surface (3 colonnes {X,Y,Z})",
+						"file_geotiff_title": "Entrée de fichier Géotiff",
+
+						// File input alt text
+						"load_holes_kad_alt": "Charger trous et KAD",
+						"load_csv_alt": "Charger CSV",
+						"load_dxf_alt": "Charger DXF",
+						"load_measured_alt": "Charger valeurs mesurées",
+						"load_surface_alt": "Charger surface",
+						"load_geotiff_alt": "Charger Géotiff",
+
+						// Plus/Minus Holes section
+						"plus_minus_holes": "+ ou - Trous",
+						"add_pattern_label": "Ajouter motif :",
+						"add_hole_label": "Ajout de trou :",
+						"delete_label": "Supprimer :",
+						"delete_hole_button": "Trou",
+						"delete_pattern_button": "Motif",
+						"delete_all_patterns_button": "Tout",
+						"renumber_holes_label": "Renuméroter lors de la suppression :",
+						"delete_renumber_start_label": "Commencer à :",
+
+						// Edit Holes section
+						"edit_holes": "Éditer les trous",
+						"dialog_edit": "Édition par dialogue",
+						"edit_blast_name_label": "Éditer le nom du tir",
+						"edit_length_popup_label": "Éditer la longueur avec dialogue",
+						"edit_hole_type_popup_label": "Éditer le type de trou avec dialogue",
+						"slider_edit": "Édition par curseur",
+						"allow_holes_edited": "Permettre l'édition des trous",
+						"selection_mode_label": "Sélection multiple avec édition par curseur",
+						"hole_easting_label": "X :",
+						"hole_northing_label": "Y :",
+						"hole_elevation_label": "Z :",
+						"hole_diameter_label": "Diamètre :",
+						"hole_length_label": "Longueur :",
+						"hole_angle_label": "Angle :",
+						"hole_bearing_label": "Azimut :",
+						"hole_subdrill_label": "Sous-forage :",
+
+						// Record Actuals section
+						"record_actuals": "Enregistrer les valeurs réelles",
+						"dialog_record": "Enregistrement par dialogue",
+						"record_length_popup_label": "Enregistrer la longueur avec dialogue",
+						"record_mass_popup_label": "Enregistrer la masse avec dialogue",
+						"record_comment_popup_label": "Enregistrer le commentaire avec dialogue",
+
+						// View Controls section
+						"view_controls": "Contrôles de vue et accrochage",
+						"font_size_label": "Taille de police (pt) : 10pt",
+						"tie_size_label": "Taille de liaison (unités) : 3.0",
+						"toe_size_label": "Taille de pied (m) : 0.5m",
+						"hole_adjust_label": "Ajustement de trou (unités) : 2.0",
+						"interval_label": "Intervalle (ms) : 100ms",
+						"first_movement_label": "Taille du premier mouvement (unités) : 2.0",
+						"snap_tolerance_label": "Tolérance d'accrochage (px) : 15px",
+
+						// Output Files section
+						"output_files": "Fichiers de sortie",
+						"save_holes_label": "Sauvegarder les trous dans un fichier (importable)",
+						"save_holes_button": "KIRRA - Génère un fichier *.csv de 14 colonnes pour sauvegarder les tirs",
+						"save_kad_label": "Sauvegarder le dessin dans un fichier (importable)",
+						"save_kad_button": "KAD - Génère un fichier de dessin Kirra App *.kad",
+						"save_all_label": "Sauvegarder tous les aspects des trous (partageable)",
+						"save_all_button": "EXTRA - Inclut longueur, inclinaison, angle, azimut et temps d'amorçage",
+						"save_measures_label": "Sauvegarder les valeurs réelles (partageable)",
+						"save_measures_button": "EXTRA - Génère la profondeur mesurée et les kilogrammes de charge",
+						"export_holes_dxf_label": "Exporter les trous vers DXF",
+						"export_holes_dxf_button": "Exporter les trous vers DXF, col, trajectoire et ID de trou comme objet texte",
+						"export_drawing_dxf_label": "Exporter le dessin vers DXF",
+						"export_drawing_dxf_button": "Exporter le dessin vers DXF, points, lignes, polygones, cercles, texte",
+						"export_epiroc_label": "Exporter pour Epiroc Surface Manager",
+						"export_epiroc_button": "EPIROC - XML - IREDES XML incluant diamètre et type de trou",
+						"export_minestar_label": "Exporter pour MineStar AQM",
+						"export_minestar_button": "MINESTAR - AQM - Génère jusqu'à 11 colonnes (Angle, Azimut, Diamètre, etc.)",
+
+						// About section
+						"about_title": "À propos",
+						"developer_mode": "Mode développeur",
+						"about_content": "Créé par Brent Buffham © 2023.",
+
+						// Right panel sections
+						"connectors": "Connecteurs",
+						"single_tie_label": "Liaison un par un :",
+						"multi_tie_label": "Liaison en ligne :",
+						"delay_label": "Retard :",
+						"color_label": "Couleur",
+						"connect_distance_label": "Distance de connexion :",
+
+						// Animate section
+						"animate_firing": "Animation de tir",
+						"play_button": "LIRE @ 1.0x",
+						"stop_button": "ARRÊT",
+
+						// Time Window section
+						"time_window": "Fenêtre temporelle",
+						"time_range_label": "Fenêtre temporelle : 8 ms",
+						"time_offset_label": "Décalage temporel : 0 ms",
+						"hole_count_label": "Nombre de trous",
+						"measured_mass_label": "Charge mesurée",
+
+						// Drawing Tools section
+						"drawing_tools": "Outils de dessin",
+						"elevation_label": "Élévation (z) :",
+						"drawing_color_label": "Couleur :",
+						"line_width_label": "Largeur de ligne :",
+						"point_draw_label": "Dessin de point :",
+						"line_draw_label": "Dessin de ligne :",
+						"poly_draw_label": "Dessin de polygone :",
+						"circle_draw_label": "Dessin de cercle :",
+						"drawing_radius_label": "Rayon (m) :",
+						"text_draw_label": "Dessin de texte :",
+						"text_label": "Texte :",
+						"common_math_label": "Utilisez \"=\" au début du texte pour utiliser JS Math ou faire des calculs.",
+						"common_math_examples": "Math.PI: Math.E: Math.max(): Math.min(): Math.round(): Math.floor(): Math.ceil(): Math.random(): Math.sqrt(): Math.pow(): Math.abs(): Math.sin(): Math.cos(): Math.tan(): Math.asin(): Math.acos(): Math.atan(): Math.log(): .toFixed()\\n\\nLa masse d'une longueur de charge peut être calculée ex.\\n=((Math.PI * Math.pow((229/2), 2)*10 * 1.18) / 1000).toFixed(2)",
+						"create_radii_button": "Créer des rayons à partir des trous",
+						"radii_steps_label": "Étapes de rayons :",
+						"drawing_polygon_radius_label": "Rayon (m) :",
+
+						// Drawing Removal section
+						"drawing_removal": "Suppression de dessin",
+						"drawing_delete_label": "Suppression de dessin :",
+						"delete_point_button": "Point",
+						"delete_object_button": "Objet",
+						"delete_all_button": "Tout",
+
+						// Voronoi section
+						"voronoi_options": "Options d'affichage et paramètres Voronoï",
+						"voronoi_display_label": "Options d'affichage Voronoï :",
+						"voronoi_legend_label": "Légende Voronoï :",
+						"voronoi_boundary_label": "Utiliser la limite des rayons de pied :",
+						"powder_factor": "Facteur de charge (masse/volume)",
+						"mass": "Masse",
+						"volume": "Volume",
+						"area": "Surface",
+						"measured_length": "Longueur mesurée",
+						"designed_length": "Longueur conçue",
+						"hole_firing_time": "Temps de tir du trou",
+						"heelan_vibration": "Vibration Heelan",
+						"unknown": "inconnu",
+						"min_max": "Min-Max",
+						"fixed": "Fixe",
+
+						// Support section
+						"buy_coffee_alt": "Montrez votre soutien avec un don",
+						"buy_coffee_text": "Offrir un café à Brent",
+						"report_bug_button": "Signaler un bug / Demander une fonctionnalité",
+
+						// Floating toolbar
+						"drag_label": "═════",
+						"select_label": "Sélectionner",
+						"select_pointer": "Pointeur de sélection",
+						"select_by_polygon": "Sélection par polygone",
+						"create_label": "Créer",
+						"pattern_in_polygon": "Motif dans polygone",
+						"holes_along_line": "Trous le long d'une ligne",
+						"holes_along_polyline": "Trous le long d'une polyligne",
+						"modify_label": "Modifier",
+						"move_to": "Déplacer vers",
+						"hole_bearing": "Azimut du trou",
+						"assign_surface": "Assigner surface",
+						"assign_grade": "Assigner pente",
+						"connect_label": "Connecter",
+						"tie_connect": "Connexion de liaison",
+						"tie_connect_multi": "Connexion de liaison multiple",
+						"connector_color": "Couleur du connecteur",
+						"measure_label": "Mesurer",
+						"ruler": "Règle",
+						"ruler_protractor": "Rapporteur",
+						"view_label": "Vue",
+						"reset_view": "Réinitialiser la vue"
+					}
+				}, "mn": {
+					"translation": {
+						// Page title
+						"title": "Кирра",
+
+						// Menu bar buttons
+						"help_button": "Тусламж",
+						"zoom_in_button": "Томруулах",
+						"zoom_out_button": "Жижигрүүлэх",
+						"go_back_button": "Буцах",
+						"select_language": "Хэл сонгох",
+
+						// Dark mode toggle
+						"dark_mode": "Горим солих",
+
+						// Display option tooltips
+						"display_hole_id_title": "Цооногийн дугаар",
+						"display_hole_length_title": "Цооногийн урт",
+						"display_hole_diameter_title": "Цооногийн диаметр",
+						"display_angle_title": "Цооногийн өнцөг",
+						"display_dip_title": "Цооногийн налуу",
+						"display_bearing_title": "Цооногийн чиглэл",
+						"display_subdrill_title": "Нэмэлт өрөмдлөг",
+						"display_ties_title": "Холболт",
+						"display_connectors_title": "Саатлын утга",
+						"display_times_only_title": "Цооногийн цаг",
+						"display_contours_title": "Тэгш өндрийн шугам",
+						"display_slope_title": "Налуу",
+						"display_relief_title": "Рельеф",
+						"display_direction_title": "Анхны хөдөлгөөн",
+						"display_xlocation_title": "Цооногийн X байршил",
+						"display_ylocation_title": "Цооногийн Y байршил",
+						"display_zlocation_title": "Цооногийн Z байршил",
+						"display_hole_type_title": "Цооногийн төрөл",
+						"display_measure_title": "Хэмжсэн урт",
+						"display_mass_title": "Хэмжсэн масс",
+						"display_comment_title": "Тайлбар",
+						"display_voronoi_title": "Вороной",
+
+						// Left panel sections
+						"open_import": "Файл нээх эсвэл импортлох",
+
+						// File input titles and tooltips
+						"file_holes_kad_title": "Цооног болон KAD файл оруулах",
+						"custom_csv_title": "Захиалгат CSV импорт",
+						"file_dxf_title": "DXF файл оруулах",
+						"measured_values_title": "Хэмжсэн утга оруулах",
+						"file_surface_title": "Гадаргуугийн файл оруулах (3 багана {X,Y,Z})",
+						"file_geotiff_title": "Геотифф файл оруулах",
+
+						// File input alt text
+						"load_holes_kad_alt": "Цооног болон KAD ачаалах",
+						"load_csv_alt": "CSV ачаалах",
+						"load_dxf_alt": "DXF ачаалах",
+						"load_measured_alt": "Хэмжсэн утга ачаалах",
+						"load_surface_alt": "Гадаргуу ачаалах",
+						"load_geotiff_alt": "Геотифф ачаалах",
+
+						// Plus/Minus Holes section
+						"plus_minus_holes": "+ эсвэл - Цооног",
+						"add_pattern_label": "Загвар нэмэх:",
+						"add_hole_label": "Цооног нэмэх:",
+						"delete_label": "Устгах:",
+						"delete_hole_button": "Цооног",
+						"delete_pattern_button": "Загвар",
+						"delete_all_patterns_button": "Бүгд",
+						"renumber_holes_label": "Устгахад дахин дугаарлах:",
+						"delete_renumber_start_label": "Эхлэх дугаар:",
+
+						// Edit Holes section
+						"edit_holes": "Цооног засах",
+						"dialog_edit": "Диалог засварлалт",
+						"edit_blast_name_label": "Тэсрэлтийн нэр засах",
+						"edit_length_popup_label": "Диалогоор урт засах",
+						"edit_hole_type_popup_label": "Диалогоор цооногийн төрөл засах",
+						"slider_edit": "Гулсуур засварлалт",
+						"allow_holes_edited": "Цооног засахыг зөвшөөрөх",
+						"selection_mode_label": "Олон сонголт гулсуур засварлалт",
+						"hole_easting_label": "X:",
+						"hole_northing_label": "Y:",
+						"hole_elevation_label": "Z:",
+						"hole_diameter_label": "Диаметр:",
+						"hole_length_label": "Урт:",
+						"hole_angle_label": "Өнцөг:",
+						"hole_bearing_label": "Чиглэл:",
+						"hole_subdrill_label": "Нэмэлт өрөмдлөг:",
+
+						// Record Actuals section
+						"record_actuals": "Бодит утга бичих",
+						"dialog_record": "Диалог бичлэг",
+						"record_length_popup_label": "Диалогоор урт бичих",
+						"record_mass_popup_label": "Диалогоор масс бичих",
+						"record_comment_popup_label": "Диалогоор тайлбар бичих",
+
+						// View Controls section
+						"view_controls": "Харагдац удирдлага болон барих",
+						"font_size_label": "Фонтын хэмжээ (pt): 10pt",
+						"tie_size_label": "Холболтын хэмжээ (нэгж): 3.0",
+						"toe_size_label": "Ёроолын хэмжээ (м): 0.5м",
+						"hole_adjust_label": "Цооног тохируулга (нэгж): 2.0",
+						"interval_label": "Завсар (мс): 100мс",
+						"first_movement_label": "Анхны хөдөлгөөний хэмжээ (нэгж): 2.0",
+						"snap_tolerance_label": "Барих хүлцэл (px): 15px",
+
+						// Output Files section
+						"output_files": "Гаралтын файл",
+						"save_holes_label": "Цоонгийг файлд хадгалах (импортлох боломжтой)",
+						"save_holes_button": "КИРРА - Тэсрэлтийн нэртэй хадгалахад зориулсан 14 баганын *.csv файл гаргах",
+						"save_kad_label": "Зургийг файлд хадгалах (импортлох боломжтой)",
+						"save_kad_button": "KAD - Кирра апп зургийн *.kad файл гаргах",
+						"save_all_label": "Цооногийн бүх талыг файлд хадгалах (хуваалцах боломжтой)",
+						"save_all_button": "НЭМЭЛТ - Урт, налуу, өнцөг, чиглэл, дэлбэрэлтийн цаг багтана",
+						"save_measures_label": "Бодит утгыг файлд хадгалах (хуваалцах боломжтой)",
+						"save_measures_button": "НЭМЭЛТ - Хэмжсэн гүн болон тэсрэх бодисын килограмм гаргах",
+						"export_holes_dxf_label": "Цоонгийг DXF-д гаргах",
+						"export_holes_dxf_button": "Цоонгийг DXF-д гаргах, амны хэсэг, зам, цооногийн дугаарыг текст объект болгон",
+						"export_drawing_dxf_label": "Зургийг DXF-д гаргах",
+						"export_drawing_dxf_button": "Зургийг DXF-д гаргах, цэг, шугам, олон өнцөгт, тойрог, текст",
+						"export_epiroc_label": "Epiroc Surface Manager-д гаргах",
+						"export_epiroc_button": "EPIROC - XML - диаметр болон цооногийн төрөл багтсан IREDES XML",
+						"export_minestar_label": "MineStar AQM-д гаргах",
+						"export_minestar_button": "MINESTAR - AQM - 11 багана хүртэл гаргах (Өнцөг, Азимут, Диаметр гэх мэт)",
+
+						// About section
+						"about_title": "Тухай",
+						"developer_mode": "Хөгжүүлэгчийн горим",
+						"about_content": "Брент Буффхам бүтээсэн © 2023.",
+
+						// Right panel sections
+						"connectors": "Холбогч",
+						"single_tie_label": "Нэг нэгээр холбох:",
+						"multi_tie_label": "Шугамаар холбох:",
+						"delay_label": "Саатал:",
+						"color_label": "Өнгө",
+						"connect_distance_label": "Холболтын зай:",
+
+						// Animate section
+						"animate_firing": "Дэлбэрэлтийн хөдөлгөөн",
+						"play_button": "ТОГЛУУЛАХ @ 1.0x",
+						"stop_button": "ЗОГСООХ",
+
+						// Time Window section
+						"time_window": "Цагийн цонх",
+						"time_range_label": "Цагийн цонх: 8 мс",
+						"time_offset_label": "Цагийн шилжилт: 0 мс",
+						"hole_count_label": "Цооногийн тоо",
+						"measured_mass_label": "Хэмжсэн тэсрэх бодис",
+
+						// Drawing Tools section
+						"drawing_tools": "Зургийн хэрэгсэл",
+						"elevation_label": "Өндөр (z):",
+						"drawing_color_label": "Өнгө:",
+						"line_width_label": "Шугамын өргөн:",
+						"point_draw_label": "Цэг зурах:",
+						"line_draw_label": "Шугам зурах:",
+						"poly_draw_label": "Олон өнцөгт зурах:",
+						"circle_draw_label": "Тойрог зурах:",
+						"drawing_radius_label": "Радиус (м):",
+						"text_draw_label": "Текст зурах:",
+						"text_label": "Текст:",
+						"common_math_label": "JS Math эсвэл тооцоолол хийхээр текстийн өмнө \"=\" ашиглана уу.",
+						"common_math_examples": "Math.PI: Math.E: Math.max(): Math.min(): Math.round(): Math.floor(): Math.ceil(): Math.random(): Math.sqrt(): Math.pow(): Math.abs(): Math.sin(): Math.cos(): Math.tan(): Math.asin(): Math.acos(): Math.atan(): Math.log(): .toFixed()\\n\\nТэсрэх бодисын уртын массыг тооцоолж болно жишээ нь\\n=((Math.PI * Math.pow((229/2), 2)*10 * 1.18) / 1000).toFixed(2)",
+						"create_radii_button": "Цооногоос радиус үүсгэх",
+						"radii_steps_label": "Радиусын алхам:",
+						"drawing_polygon_radius_label": "Радиус (м):",
+
+						// Drawing Removal section
+						"drawing_removal": "Зураг устгах",
+						"drawing_delete_label": "Зураг устгах:",
+						"delete_point_button": "Цэг",
+						"delete_object_button": "Объект",
+						"delete_all_button": "Бүгд",
+
+						// Voronoi section
+						"voronoi_options": "Вороной харуулах сонголт болон тохиргоо",
+						"voronoi_display_label": "Вороной харуулах сонголт:",
+						"voronoi_legend_label": "Вороной тайлбар:",
+						"voronoi_boundary_label": "Ёроолын радиусын хил ашиглах:",
+						"powder_factor": "Тэсрэх бодисын хүчин зүйл (масс/эзэлхүүн)",
+						"mass": "Масс",
+						"volume": "Эзэлхүүн",
+						"area": "Талбай",
+						"measured_length": "Хэмжсэн урт",
+						"designed_length": "Төлөвлөсөн урт",
+						"hole_firing_time": "Цооногийн дэлбэрэх цаг",
+						"heelan_vibration": "Хилан чичиргээ",
+						"unknown": "үл мэдэгдэх",
+						"min_max": "Хамгийн бага-Хамгийн их",
+						"fixed": "Тогтмол",
+
+						// Support section
+						"buy_coffee_alt": "Мөнгөн хандиваар дэмжлэг үзүүлэх",
+						"buy_coffee_text": "Брентэд кофе худалдаж авах",
+						"report_bug_button": "Алдаа мэдээлэх / Функц хүсэх",
+
+						// Floating toolbar
+						"drag_label": "═════",
+						"select_label": "Сонгох",
+						"select_pointer": "Сонгох заагч",
+						"select_by_polygon": "Олон өнцөгтөөр сонгох",
+						"create_label": "Үүсгэх",
+						"pattern_in_polygon": "Олон өнцөгт доторх загвар",
+						"holes_along_line": "Шугамын дагуух цооног",
+						"holes_along_polyline": "Олон шугамын дагуух цооног",
+						"modify_label": "Өөрчлөх",
+						"move_to": "Шилжүүлэх",
+						"hole_bearing": "Цооногийн чиглэл",
+						"assign_surface": "Гадаргуу оноох",
+						"assign_grade": "Зэрэглэл оноох",
+						"connect_label": "Холбох",
+						"tie_connect": "Холболт холбох",
+						"tie_connect_multi": "Олон холболт холбох",
+						"connector_color": "Холбогчийн өнгө",
+						"measure_label": "Хэмжих",
+						"ruler": "Захирагч",
+						"ruler_protractor": "Өнцөг хэмжигч",
+						"view_label": "Харах",
+						"reset_view": "Харагдацыг дахин тохируулах"
+					}
+				}, "ru": {
+					"translation": {
+						// Page title
+						"title": "Кирра",
+
+						// Menu bar buttons
+						"help_button": "Помощь",
+						"zoom_in_button": "Увеличить",
+						"zoom_out_button": "Уменьшить",
+						"go_back_button": "Назад",
+						"select_language": "Выбрать язык",
+
+						// Dark mode toggle
+						"dark_mode": "Переключить режим",
+
+						// Display option tooltips
+						"display_hole_id_title": "ID скважины",
+						"display_hole_length_title": "Длина скважины",
+						"display_hole_diameter_title": "Диаметр скважины",
+						"display_angle_title": "Угол скважины",
+						"display_dip_title": "Наклон скважины",
+						"display_bearing_title": "Азимут скважины",
+						"display_subdrill_title": "Перебур",
+						"display_ties_title": "Связи",
+						"display_connectors_title": "Значение задержки",
+						"display_times_only_title": "Время скважины",
+						"display_contours_title": "Контуры",
+						"display_slope_title": "Уклон",
+						"display_relief_title": "Рельеф",
+						"display_direction_title": "Первое движение",
+						"display_xlocation_title": "X координата скважины",
+						"display_ylocation_title": "Y координата скважины",
+						"display_zlocation_title": "Z координата скважины",
+						"display_hole_type_title": "Тип скважины",
+						"display_measure_title": "Измеренная длина",
+						"display_mass_title": "Измеренная масса",
+						"display_comment_title": "Комментарий",
+						"display_voronoi_title": "Вороной",
+
+						// Left panel sections
+						"open_import": "Открыть или импортировать файлы",
+
+						// File input titles and tooltips
+						"file_holes_kad_title": "Ввод файлов скважин и KAD",
+						"custom_csv_title": "Пользовательский импорт CSV",
+						"file_dxf_title": "Ввод файла DXF",
+						"measured_values_title": "Ввод измеренных значений",
+						"file_surface_title": "Ввод файла поверхности (3 столбца {X,Y,Z})",
+						"file_geotiff_title": "Ввод файла Geotiff",
+
+						// File input alt text
+						"load_holes_kad_alt": "Загрузить скважины и KAD",
+						"load_csv_alt": "Загрузить CSV",
+						"load_dxf_alt": "Загрузить DXF",
+						"load_measured_alt": "Загрузить измеренные значения",
+						"load_surface_alt": "Загрузить поверхность",
+						"load_geotiff_alt": "Загрузить Geotiff",
+
+						// Plus/Minus Holes section
+						"plus_minus_holes": "+ или - Скважины",
+						"add_pattern_label": "Добавить шаблон:",
+						"add_hole_label": "Добавление скважины:",
+						"delete_label": "Удалить:",
+						"delete_hole_button": "Скважина",
+						"delete_pattern_button": "Шаблон",
+						"delete_all_patterns_button": "Все",
+						"renumber_holes_label": "Перенумеровать при удалении:",
+						"delete_renumber_start_label": "Начать с:",
+
+						// Edit Holes section
+						"edit_holes": "Редактировать скважины",
+						"dialog_edit": "Редактирование диалогом",
+						"edit_blast_name_label": "Редактировать название взрыва",
+						"edit_length_popup_label": "Редактировать длину диалогом",
+						"edit_hole_type_popup_label": "Редактировать тип скважины диалогом",
+						"slider_edit": "Редактирование ползунком",
+						"allow_holes_edited": "Разрешить редактирование скважин",
+						"selection_mode_label": "Множественный выбор с редактированием ползунком",
+						"hole_easting_label": "X:",
+						"hole_northing_label": "Y:",
+						"hole_elevation_label": "Z:",
+						"hole_diameter_label": "Диаметр:",
+						"hole_length_label": "Длина:",
+						"hole_angle_label": "Угол:",
+						"hole_bearing_label": "Азимут:",
+						"hole_subdrill_label": "Перебур:",
+
+						// Record Actuals section
+						"record_actuals": "Записать фактические значения",
+						"dialog_record": "Запись диалогом",
+						"record_length_popup_label": "Записать длину диалогом",
+						"record_mass_popup_label": "Записать массу диалогом",
+						"record_comment_popup_label": "Записать комментарий диалогом",
+
+						// View Controls section
+						"view_controls": "Управление видом и привязка",
+						"font_size_label": "Размер шрифта (pt): 10pt",
+						"tie_size_label": "Размер связи (единицы): 3.0",
+						"toe_size_label": "Размер забоя (м): 0.5м",
+						"hole_adjust_label": "Настройка скважины (единицы): 2.0",
+						"interval_label": "Интервал (мс): 100мс",
+						"first_movement_label": "Размер первого движения (единицы): 2.0",
+						"snap_tolerance_label": "Допуск привязки (px): 15px",
+
+						// Output Files section
+						"output_files": "Выходные файлы",
+						"save_holes_label": "Сохранить скважины в файл (импортируемый)",
+						"save_holes_button": "КИРРА - Выводит 14-столбцовый *.csv файл для сохранения взрывов с именами",
+						"save_kad_label": "Сохранить чертеж в файл (импортируемый)",
+						"save_kad_button": "KAD - Выводит файл чертежа Kirra App *.kad для сохранения чертежей",
+						"save_all_label": "Сохранить все аспекты скважин в файл (общий доступ)",
+						"save_all_button": "ДОПОЛНИТЕЛЬНО - Включает длину, наклон, угол, азимут и время инициирования",
+						"save_measures_label": "Сохранить фактические значения в файл (общий доступ)",
+						"save_measures_button": "ДОПОЛНИТЕЛЬНО - Выводит измеренную глубину и килограммы заряда",
+						"export_holes_dxf_label": "Экспорт скважин в DXF",
+						"export_holes_dxf_button": "Экспорт скважин в DXF, устье, траектория и ID скважины как текстовый объект",
+						"export_drawing_dxf_label": "Экспорт чертежа в DXF",
+						"export_drawing_dxf_button": "Экспорт чертежа в DXF, точки, линии, полигоны, окружности, текст",
+						"export_epiroc_label": "Экспорт для Epiroc Surface Manager",
+						"export_epiroc_button": "EPIROC - XML - IREDES XML включая диаметр и тип скважины",
+						"export_minestar_label": "Экспорт для MineStar AQM",
+						"export_minestar_button": "MINESTAR - AQM - Выводит до 11 столбцов (Угол, Азимут, Диаметр и т.д.)",
+
+						// About section
+						"about_title": "О программе",
+						"developer_mode": "Режим разработчика",
+						"about_content": "Создано Брентом Буффхемом © 2023.",
+
+						// Right panel sections
+						"connectors": "Соединители",
+						"single_tie_label": "Связать по одному:",
+						"multi_tie_label": "Связать все в линию:",
+						"delay_label": "Задержка:",
+						"color_label": "Цвет",
+						"connect_distance_label": "Расстояние соединения:",
+
+						// Animate section
+						"animate_firing": "Анимация взрыва",
+						"play_button": "ВОСПРОИЗВЕСТИ @ 1.0x",
+						"stop_button": "СТОП",
+
+						// Time Window section
+						"time_window": "Временное окно",
+						"time_range_label": "Временное окно: 8 мс",
+						"time_offset_label": "Смещение времени: 0 мс",
+						"hole_count_label": "Количество скважин",
+						"measured_mass_label": "Измеренный заряд",
+
+						// Drawing Tools section
+						"drawing_tools": "Инструменты рисования",
+						"elevation_label": "Высота (z):",
+						"drawing_color_label": "Цвет:",
+						"line_width_label": "Ширина линии:",
+						"point_draw_label": "Рисование точки:",
+						"line_draw_label": "Рисование линии:",
+						"poly_draw_label": "Рисование полигона:",
+						"circle_draw_label": "Рисование окружности:",
+						"drawing_radius_label": "Радиус (м):",
+						"text_draw_label": "Рисование текста:",
+						"text_label": "Текст:",
+						"common_math_label": "Используйте \"=\" в начале текста для использования JS Math или вычислений.",
+						"common_math_examples": "Math.PI: Math.E: Math.max(): Math.min(): Math.round(): Math.floor(): Math.ceil(): Math.random(): Math.sqrt(): Math.pow(): Math.abs(): Math.sin(): Math.cos(): Math.tan(): Math.asin(): Math.acos(): Math.atan(): Math.log(): .toFixed()\\n\\nМасса длины заряда может быть вычислена например\\n=((Math.PI * Math.pow((229/2), 2)*10 * 1.18) / 1000).toFixed(2)",
+						"create_radii_button": "Создать радиусы из скважин",
+						"radii_steps_label": "Шаги радиусов:",
+						"drawing_polygon_radius_label": "Радиус (м):",
+
+						// Drawing Removal section
+						"drawing_removal": "Удаление рисунка",
+						"drawing_delete_label": "Удаление рисунка:",
+						"delete_point_button": "Точка",
+						"delete_object_button": "Объект",
+						"delete_all_button": "Все",
+
+						// Voronoi section
+						"voronoi_options": "Параметры отображения и настройки Вороной",
+						"voronoi_display_label": "Параметры отображения Вороной:",
+						"voronoi_legend_label": "Легенда Вороной:",
+						"voronoi_boundary_label": "Использовать границу радиусов забоя:",
+						"powder_factor": "Удельный расход ВВ (масса/объем)",
+						"mass": "Масса",
+						"volume": "Объем",
+						"area": "Площадь",
+						"measured_length": "Измеренная длина",
+						"designed_length": "Проектная длина",
+						"hole_firing_time": "Время взрыва скважины",
+						"heelan_vibration": "Вибрация Хилана",
+						"unknown": "неизвестно",
+						"min_max": "Мин-Макс",
+						"fixed": "Фиксированный",
+
+						// Support section
+						"buy_coffee_alt": "Поддержите денежным пожертвованием",
+						"buy_coffee_text": "Купить Бренту кофе",
+						"report_bug_button": "Сообщить об ошибке / Запросить функцию",
+
+						// Floating toolbar
+						"drag_label": "═════",
+						"select_label": "Выбрать",
+						"select_pointer": "Указатель выбора",
+						"select_by_polygon": "Выбор полигоном",
+						"create_label": "Создать",
+						"pattern_in_polygon": "Шаблон в полигоне",
+						"holes_along_line": "Скважины вдоль линии",
+						"holes_along_polyline": "Скважины вдоль полилинии",
+						"modify_label": "Изменить",
+						"move_to": "Переместить в",
+						"hole_bearing": "Азимут скважины",
+						"assign_surface": "Назначить поверхность",
+						"assign_grade": "Назначить уклон",
+						"connect_label": "Соединить",
+						"tie_connect": "Соединение связи",
+						"tie_connect_multi": "Множественное соединение связи",
+						"connector_color": "Цвет соединителя",
+						"measure_label": "Измерить",
+						"ruler": "Линейка",
+						"ruler_protractor": "Транспортир",
+						"view_label": "Вид",
+						"reset_view": "Сбросить вид"
+					}
+				}, "es": {
+					"translation": {
+						// Page title
+						"title": "Kirra",
+
+						// Menu bar buttons
+						"help_button": "Ayuda",
+						"zoom_in_button": "Acercar",
+						"zoom_out_button": "Alejar",
+						"go_back_button": "Volver",
+						"select_language": "Seleccionar idioma",
+
+						// Dark mode toggle
+						"dark_mode": "Cambiar modo",
+
+						// Display option tooltips
+						"display_hole_id_title": "ID del barreno",
+						"display_hole_length_title": "Longitud del barreno",
+						"display_hole_diameter_title": "Diámetro del barreno",
+						"display_angle_title": "Ángulo del barreno",
+						"display_dip_title": "Inclinación del barreno",
+						"display_bearing_title": "Azimut del barreno",
+						"display_subdrill_title": "Sobreperforación",
+						"display_ties_title": "Conexiones",
+						"display_connectors_title": "Valor de retardo",
+						"display_times_only_title": "Tiempo del barreno",
+						"display_contours_title": "Contornos",
+						"display_slope_title": "Pendiente",
+						"display_relief_title": "Relieve",
+						"display_direction_title": "Primer movimiento",
+						"display_xlocation_title": "Ubicación X del barreno",
+						"display_ylocation_title": "Ubicación Y del barreno",
+						"display_zlocation_title": "Ubicación Z del barreno",
+						"display_hole_type_title": "Tipo de barreno",
+						"display_measure_title": "Longitud medida",
+						"display_mass_title": "Masa medida",
+						"display_comment_title": "Comentario",
+						"display_voronoi_title": "Voronoi",
+
+						// Left panel sections
+						"open_import": "Abrir o importar archivos",
+
+						// File input titles and tooltips
+						"file_holes_kad_title": "Entrada de archivos de barrenos y KAD",
+						"custom_csv_title": "Importación CSV personalizada",
+						"file_dxf_title": "Entrada de archivo DXF",
+						"measured_values_title": "Entrada de valores medidos",
+						"file_surface_title": "Entrada de archivo de superficie (3 columnas {X,Y,Z})",
+						"file_geotiff_title": "Entrada de archivo Geotiff",
+
+						// File input alt text
+						"load_holes_kad_alt": "Cargar barrenos y KAD",
+						"load_csv_alt": "Cargar CSV",
+						"load_dxf_alt": "Cargar DXF",
+						"load_measured_alt": "Cargar valores medidos",
+						"load_surface_alt": "Cargar superficie",
+						"load_geotiff_alt": "Cargar Geotiff",
+
+						// Plus/Minus Holes section
+						"plus_minus_holes": "+ o - Barrenos",
+						"add_pattern_label": "Agregar patrón:",
+						"add_hole_label": "Agregando barreno:",
+						"delete_label": "Eliminar:",
+						"delete_hole_button": "Barreno",
+						"delete_pattern_button": "Patrón",
+						"delete_all_patterns_button": "Todo",
+						"renumber_holes_label": "Renumerar al eliminar:",
+						"delete_renumber_start_label": "Comenzar en:",
+
+						// Edit Holes section
+						"edit_holes": "Editar barrenos",
+						"dialog_edit": "Edición por diálogo",
+						"edit_blast_name_label": "Editar nombre de voladura",
+						"edit_length_popup_label": "Editar longitud con diálogo",
+						"edit_hole_type_popup_label": "Editar tipo de barreno con diálogo",
+						"slider_edit": "Edición por deslizador",
+						"allow_holes_edited": "Permitir edición de barrenos",
+						"selection_mode_label": "Selección múltiple con edición por deslizador",
+						"hole_easting_label": "X:",
+						"hole_northing_label": "Y:",
+						"hole_elevation_label": "Z:",
+						"hole_diameter_label": "Diámetro:",
+						"hole_length_label": "Longitud:",
+						"hole_angle_label": "Ángulo:",
+						"hole_bearing_label": "Azimut:",
+						"hole_subdrill_label": "Sobreperforación:",
+
+						// Record Actuals section
+						"record_actuals": "Registrar valores reales",
+						"dialog_record": "Registro por diálogo",
+						"record_length_popup_label": "Registrar longitud con diálogo",
+						"record_mass_popup_label": "Registrar masa con diálogo",
+						"record_comment_popup_label": "Registrar comentario con diálogo",
+
+						// View Controls section
+						"view_controls": "Controles de vista y ajuste",
+						"font_size_label": "Tamaño de fuente (pt): 10pt",
+						"tie_size_label": "Tamaño de conexión (unidades): 3.0",
+						"toe_size_label": "Tamaño de fondo (m): 0.5m",
+						"hole_adjust_label": "Ajuste de barreno (unidades): 2.0",
+						"interval_label": "Intervalo (ms): 100ms",
+						"first_movement_label": "Tamaño del primer movimiento (unidades): 2.0",
+						"snap_tolerance_label": "Tolerancia de ajuste (px): 15px",
+
+						// Output Files section
+						"output_files": "Archivos de salida",
+						"save_holes_label": "Guardar barrenos en archivo (importable)",
+						"save_holes_button": "KIRRA - Genera archivo *.csv de 14 columnas para guardar voladuras con nombres",
+						"save_kad_label": "Guardar dibujo en archivo (importable)",
+						"save_kad_button": "KAD - Genera archivo de dibujo Kirra App *.kad para guardar dibujos",
+						"save_all_label": "Guardar todos los aspectos de barrenos en archivo (compartible)",
+						"save_all_button": "EXTRA - Incluye longitud, inclinación, ángulo, azimut y tiempo de iniciación",
+						"save_measures_label": "Guardar valores reales en archivo (compartible)",
+						"save_measures_button": "EXTRA - Genera profundidad medida y kilogramos de carga",
+						"export_holes_dxf_label": "Exportar barrenos a DXF",
+						"export_holes_dxf_button": "Exportar barrenos a DXF, collar, trayectoria e ID de barreno como objeto de texto",
+						"export_drawing_dxf_label": "Exportar dibujo a DXF",
+						"export_drawing_dxf_button": "Exportar dibujo a DXF, puntos, líneas, polígonos, círculos, texto",
+						"export_epiroc_label": "Exportar para Epiroc Surface Manager",
+						"export_epiroc_button": "EPIROC - XML - IREDES XML incluyendo diámetro y tipo de barreno",
+						"export_minestar_label": "Exportar para MineStar AQM",
+						"export_minestar_button": "MINESTAR - AQM - Genera hasta 11 columnas (Ángulo, Azimut, Diámetro, etc.)",
+
+						// About section
+						"about_title": "Acerca de",
+						"developer_mode": "Modo desarrollador",
+						"about_content": "Creado por Brent Buffham © 2023.",
+
+						// Right panel sections
+						"connectors": "Conectores",
+						"single_tie_label": "Conectar uno por uno:",
+						"multi_tie_label": "Conectar todos en línea:",
+						"delay_label": "Retardo:",
+						"color_label": "Color",
+						"connect_distance_label": "Distancia de conexión:",
+
+						// Animate section
+						"animate_firing": "Animar voladura",
+						"play_button": "REPRODUCIR @ 1.0x",
+						"stop_button": "PARAR",
+
+						// Time Window section
+						"time_window": "Ventana de tiempo",
+						"time_range_label": "Ventana de tiempo: 8 ms",
+						"time_offset_label": "Desplazamiento de tiempo: 0 ms",
+						"hole_count_label": "Cantidad de barrenos",
+						"measured_mass_label": "Carga medida",
+
+						// Drawing Tools section
+						"drawing_tools": "Herramientas de dibujo",
+						"elevation_label": "Elevación (z):",
+						"drawing_color_label": "Color:",
+						"line_width_label": "Ancho de línea:",
+						"point_draw_label": "Dibujo de punto:",
+						"line_draw_label": "Dibujo de línea:",
+						"poly_draw_label": "Dibujo de polígono:",
+						"circle_draw_label": "Dibujo de círculo:",
+						"drawing_radius_label": "Radio (m):",
+						"text_draw_label": "Dibujo de texto:",
+						"text_label": "Texto:",
+						"common_math_label": "Use \"=\" al inicio del texto para usar JS Math o hacer cálculos.",
+						"common_math_examples": "Math.PI: Math.E: Math.max(): Math.min(): Math.round(): Math.floor(): Math.ceil(): Math.random(): Math.sqrt(): Math.pow(): Math.abs(): Math.sin(): Math.cos(): Math.tan(): Math.asin(): Math.acos(): Math.atan(): Math.log(): .toFixed()\\n\\nLa masa de una longitud de carga puede calcularse ej.\\n=((Math.PI * Math.pow((229/2), 2)*10 * 1.18) / 1000).toFixed(2)",
+						"create_radii_button": "Crear radios desde barrenos",
+						"radii_steps_label": "Pasos de radios:",
+						"drawing_polygon_radius_label": "Radio (m):",
+
+						// Drawing Removal section
+						"drawing_removal": "Eliminación de dibujo",
+						"drawing_delete_label": "Eliminar dibujo:",
+						"delete_point_button": "Punto",
+						"delete_object_button": "Objeto",
+						"delete_all_button": "Todo",
+
+						// Voronoi section
+						"voronoi_options": "Opciones de visualización y configuración de Voronoi",
+						"voronoi_display_label": "Opciones de visualización de Voronoi:",
+						"voronoi_legend_label": "Leyenda de Voronoi:",
+						"voronoi_boundary_label": "Usar límite de radios de fondo:",
+						"powder_factor": "Factor de carga (masa/volumen)",
+						"mass": "Masa",
+						"volume": "Volumen",
+						"area": "Área",
+						"measured_length": "Longitud medida",
+						"designed_length": "Longitud diseñada",
+						"hole_firing_time": "Tiempo de disparo del barreno",
+						"heelan_vibration": "Vibración Heelan",
+						"unknown": "desconocido",
+						"min_max": "Mín-Máx",
+						"fixed": "Fijo",
+
+						// Support section
+						"buy_coffee_alt": "Muestra apoyo con una donación",
+						"buy_coffee_text": "Comprar un café a Brent",
+						"report_bug_button": "Reportar error / Solicitar función",
+
+						// Floating toolbar
+						"drag_label": "═════",
+						"select_label": "Seleccionar",
+						"select_pointer": "Puntero de selección",
+						"select_by_polygon": "Selección por polígono",
+						"create_label": "Crear",
+						"pattern_in_polygon": "Patrón en polígono",
+						"holes_along_line": "Barrenos a lo largo de línea",
+						"holes_along_polyline": "Barrenos a lo largo de polilínea",
+						"modify_label": "Modificar",
+						"move_to": "Mover a",
+						"hole_bearing": "Azimut del barreno",
+						"assign_surface": "Asignar superficie",
+						"assign_grade": "Asignar pendiente",
+						"connect_label": "Conectar",
+						"tie_connect": "Conexión de enlace",
+						"tie_connect_multi": "Conexión de enlace múltiple",
+						"connector_color": "Color del conector",
+						"measure_label": "Medir",
+						"ruler": "Regla",
+						"ruler_protractor": "Transportador",
+						"view_label": "Vista",
+						"reset_view": "Restablecer vista"
+					}
+				}
+
+			}
 		</script>
 
 	</head>
 
 	<body>
-
-		<!-- Add Menubar to top of the window from style.menubar.css -->
-		<!-- Add a File, Pattern, Hole, View, Connect, Analyse, Help to the menubar -->
+		<input type="hidden" id="htmlUIVersion" value="2">
+		<!-- this is used to track the version of the html UI - for scaling issues-->
 		<div class="menubar">
 			<div class="menu">
-				<div class="menu-item">
-					<svg version="1.1" baseProfile="basic" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40" height="20" viewBox="-30 -30 200 200" stroke-width="3" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-						<path
-							d="M7.53,64.77c-0.36-1.36-0.38-3.99,0.08-5.34c-0.98-2.51-2.88-8.13-2.22-10.9c1.77-5.81-0.07-16.1-0.95-24.92C3.55,18.78,6.31,4.11,7.61,2.26c6.24-5.37,24.76,22.67,29.81,29.81c1.57-0.17,1.91,1.72,1.78,2.93c1.87,2.82,3.54,4.3,7.03,4.17c2.71,0.61,9.25,1.73,11.56,3.31c3.57-1.82,10.55,1.6,12.57-3.03c1.23-0.82,4.4-3.07,3.94-4.96c2.19-1.04,4.21-5.39,5.03-7.5c1.7-4.14,5.96-7.51,8.29-11.14c5.21-6.14,15.78-27.02,20.71-8.09c2.32,9.62,3.98,22.54,1.38,32.15c0.51,1.33,0.58,4.5,0.59,5.92c0.89,1.69,0.82,4.84,0.2,6.61c0.38,2.52-0.66,5.62-2.47,7.4c0.17,1.03,0.2,2.67-0.49,3.55c0,0,3.21,2.42,4.04,4.54c0.84,2.12-0.59,9.51-1.18,12.53c1.32,1.57,2.75,4.67,2.17,6.81c3.3,5.31-0.68,4.27,1.38,8.48c0.69,2.34-0.51,4.65,1.09,6.71c-0.28,1.05-1.39,3.81-1.58,4.93c0.84,2.71-1.41,6.85-2.96,8.97c0,0,0.39,3.85,0.39,3.85c-4.86,1.62-1.02,2.56-4.83,5.13c-3.52,19.49-28.37,34.55-46.94,37.28c-9.52,0.18-23.4-3.44-29-11.64c-3.47-1.2-9.42-2.81-11.05-6.51c-0.68-1.05-4.4-2.51-3.75-4.24c-1.39,0.33-2.04-1.83-2.47-2.76c-3.42,0.24-3.99-8.32-3.55-10.75c0,0-1.68-3.16-1.68-3.16c0.5-1.06,0.12-1.99-0.69-2.66c0.66-1.83,0.58-1.44-1.18-1.87c-0.19-1.23,0.33-2.6-0.69-3.45c0.13-1.01-0.33-2.69-0.8-3.55c-1.65-1.36-1.5-5.44-2.56-7.3c-3.32-1.31-2.49-3.65,0.2-5.23c0.49-1.42-0.47-3.32-1.38-4.34c2.56-1.71-0.74-3.32,1.48-6.41c0.99-2.71,2.11-0.41-0.3-3.85c0.28-2.86,2.84-3.43,3.06-6.9c0.46-1.74-0.61-4.26-1.78-5.52c3.46-0.9,1.88-1.16,1.28-3.65l2.81-3" />
-						<path d="M60.64,124.58c1.69,0.63,4,0.19,5.21-1.41c-1.74,0.78-4.01,1.14-4.83-0.99c3.43-2.98-6.5-3.52-1.55,1.73" />
-						<path d="M51.44,124.77c-1.56,0.79-4.74,0.05-5.89-2.37c1.6,1.38,3.9,2.71,4.71-0.18c-3.32-3.58,5.44-3.26,2.3,1.74" />
-						<path d="M42.74,86.54c-3.68-8.21-9.86-10.1-12.32-6.32c-1.16,1.72-1.56,3.14-2.92,3.74" />
-						<path d="M41.19,87.3c0,0-1.04,0.11-2.33,0.63c-1.29,0.52-5.01,0.78-6.4-0.06c-1.39-0.83-2.55-3.2-2.55-3.2" />
-						<path d="M72.65,83.88c0,0,0.7-1.47,0.93-2.36c0.22-0.89,0.9-4.5,4.52-4.59c3.62-0.09,5.07,2.18,5.95,3.48s3.41,2.52,3.41,2.52" />
-						<path d="M74.1,84.9c2.28,3.42,7.74,2.49,9.25-1.12" />
-						<path
-							d="M34.46,114.13c1.38,2.59,0.42,5.7,0.55,9.02s6.39,9.58,11.88,10.5c15.33-0.88,26.05,3.26,34.02-13.86c1.31-4.15,4.28-5.58,7.4-7.96c-0.51,2.55-4.26,8.65-5.62,10.91c-1.51,5.29-4.92,13.59-8.8,17.57c-1.11,7.93-2.1,17.62-11.76,19.38c-12.37,1.23-15.89-4.36-15.83-16.05c-2.76-2.08-5.87-7.81-6.95-11.02" />
-						<path d="M68.11,149.19c-2.23,4.57-6.63,5.95-11.39,5.32c-3.31-0.23-5.85-2.22-6.95-5.32" />
-						<path
-							d="M40.3,41.79l0.25,2.02c0.1,0.81-0.53,1.53-1.35,1.53h-1.72l0.71,1.99c0.21,0.58,0.2,1.21-0.03,1.77l-0.25,0.63c-0.25,0.62-0.91,0.97-1.56,0.84c-1.28-0.27-3.16-0.65-3.01-0.5c0.14,0.14,0.77,1.41,1.25,2.38c0.33,0.67,0.27,1.47-0.16,2.09l0,0c-0.31,0.45-0.81,0.74-1.35,0.79L29.2,55.7l0,0c0.57,0.8,0.27,1.93-0.63,2.34l-1.37,0.62l0,0c1.07,0.44,1.13,1.92,0.11,2.46l-0.11,0.06l0,0c1.01,0.72,0.8,2.28-0.37,2.71l-0.08,0.03h0c0.76,0.63,0.57,1.85-0.35,2.21l-1.35,0.53h0c0.93,0.97,1.12,2.43,0.48,3.61l-0.24,0.44c-0.46,0.85-0.86,1.74-1.19,2.65l-1.34,3.7c-0.45,1.24-1.14,2.38-2.04,3.35l-3.23,3.49l-3.33,3.99" />
-						<path
-							d="M9.75,67.53l4.97-1.74c0.73-0.25,1.29-0.85,1.49-1.6l0.24-0.87c0.25-0.91,0.84-1.69,1.64-2.18l1.78-1.1c1.17-0.72,2.16-1.7,2.88-2.87l1.62-2.6c0.45-0.73,0.99-1.4,1.59-2.01l1.39-1.39c0.33-0.33,0.59-0.73,0.75-1.17l0.79-2.14c0.28-0.76,0.87-1.35,1.63-1.64l0.55-0.21c1.57-0.59,2.65-2.03,2.8-3.7l0.42-4.67" />
-						<path
-							d="M70.4,44.82l0.99,2.07c0.39,0.81,0.87,1.58,1.43,2.28c0.33,0.42,0.74,0.88,1.06,1.23c0.3,0.33,0.72,0.5,1.16,0.5c0.82-0.01,2.16,0.22,2.46,1.68l0,0l6.54,1.31c0.53,0.11,0.97,0.48,1.16,0.99v0c0.13,0.36,0.45,0.63,0.83,0.69l1.12,0.19c1.15,0.19,2.17,0.86,2.8,1.84l0.64,0.99c0.24,0.38,0.55,0.71,0.91,0.98l1.58,1.18c0.55,0.41,0.99,0.95,1.29,1.57l0.73,1.55c0.3,0.63,0.7,1.2,1.18,1.7c0.77,0.79,2.03,2.05,2.74,2.76c0.34,0.34,0.78,0.58,1.26,0.67c0.42,0.08,0.97,0.19,1.49,0.27c1.24,0.2,2.47-0.38,3.11-1.47l0.87-1.47" />
-						<path d="M78.02,45.64c2.43,2.96,7.99,2.96,7.99,2.96s-2.66-2.88-2.07-5.7c0.59-2.81-2-2.29-3.4-3.77c-1.41-1.48,1.11-10.65,1.11-10.65s-5.55,7.4-5.87,9.54" />
-						<path
-							d="M96.96,28.48c0.83,1.43,1.78,2.22,1.48,5.25s-2.74,5.4-2.74,5.4s-1.04,1.18-1.63,2.66c-0.59,1.48-0.15,5.4-0.67,6.44c-0.52,1.04-1.18,1.41-2.29,1.41c-1.11,0-4.22,0-5.1-1.04c-0.89-1.04-2.07-4.59-2.07-5.7c0-1.11,1.63-1.85,1.63-1.85s-0.74-1.29-0.59-2.51c0.15-1.22,1.09-2.72,2.49-3.25c1.4-0.53,3.65-1.18,4.61-2.59s-0.81-2.74-0.67-4.22C91.56,27,94.44,25,94.44,25" />
-						<path d="M14.88,39.54c0.15-0.56,0.71-0.9,1.28-0.76l2.7,0.64c0.54,0.13,1.08-0.18,1.26-0.7l0.76-2.27c0.03-0.09,0.05-0.17,0.05-0.26l0.29-4.23" />
-						<path
-							d="M18.24,26.66c0.73-0.95,2.05-1.23,3.09-0.64l2.92,1.63c0.29,0.16,0.56,0.35,0.82,0.55l2.55,2.05c1.65,1.32,2.43,3.45,2.02,5.53l-0.59,2.96c-0.05,0.27-0.12,0.52-0.22,0.78c-0.47,1.28-1.94,5.31-2.01,5.31c-0.03,0-0.44,0.92-0.87,1.92c-0.38,0.88-1.64,0.85-1.98-0.05l0,0c-0.34-0.93-2.13-0.98-2,0c0.73,5.26-1.19,4.42-1.44,3.98c-0.25-0.44-0.36-1.56-0.86-3.16c-0.33-1.08-2.04-1.75-2.22-0.64l0.14,0.86c0.5,2.45-1.01,1.49-1.74,0.15c0,0-0.61-4.26-2.02-3.44" />
-						<path d="M48.95,81.34c0.27-8.42-0.2-14.05-10.13-14.1c4.07,2.81,4.72,2.2-0.96,2.55c3.59,2.44,5.86,3.03,0,3c0,0,4.88,3.48,4.88,3.48" />
-						<path d="M66.51,81.81c-1.86-6.59-4.51-15.84,4.95-15.53c0,0-2.46,3.33-2.46,3.33c4.6-1.37,6.17-4.41,3.86,2.48c3.07-2.83,3.5-3.2,2.27,1.22c-0.8,1.5-3.99,2.59-3.99,2.59" />
-						<path d="M56.2,113.69c-10.45-1.63-14.35,2.61-9.02,13.24c1.03,1.95,6.8,4.29,9.02,4.29c2.22,0,9.97-4.36,11.09-10.8c0.49-2.79-1.41-7.53-4.59-7.17c-3.18,0.36-5.19,0.59-5.19,0.59" />
-						<path d="M46.88,133.66c0,0,1.11,3.25,1.11,3.25c1.59,4.52,4.14,12.99,10.28,12.28c5.26,0.91,7.22-1.96,8.58-6.51c0.93-2.57,3.04-8.51,3.57-11.14" />
-						<path d="M14.63,91.57l-2,3.48c2.78-0.79,3.25-1.37,1.55,1.63c0,0,3.55-2,3.55-2s-4.07,10.36-3.55,9.84c0.52-0.52,3.25-3.92,3.25-3.92l-0.37,8.88l3.99-5.4c-0.06,2.42-6.63,14.46,0,7.47c0.1,1.2-2.39,6.04,0.52,5.84c0.44-0.15-0.37,6.21,0,5.84c5.11-8.5,2.1-0.16,7.91-3.43" />
-						<path
-							d="M92.23,66.42l2.81,6.88c-1.71,2.48,0.02,3.07,1.63,4.51c-2.6,4.51,2.76,3.87-1.48,7.84c1.93,3.51,6.42,7.84,10.21,9.25c-4.4,2.3-2.16,2.64,0,5.55c0,0-2.81,4.29-2.81,4.29c0.84,2.23,1.99,3.22-1.11,3.99c0,0,2.07,2,1.85,2s-6.21,0-6.21,0l1.33,3.25c-2.8,1.8-4.5,1.5-1.48,4.66c-2.16-0.37-4.47-2.5-1.48,1.16" />
-						<path d="M42.74,90.17c0,0-1.63,3.66-2.51,4.96c-0.89,1.29-3.95,3.37-5.77,4.22c-1.82,0.84-3.6,1.58-4.96,2.29s-3.77,2.24-4.51,1.04c-0.74-1.21-1.48-9.69-0.74-11.1c0.74-1.41,1.92,4.62,4.14,4.84c0.59,0.08,0.81,0.82,1.52,0.85s1.74,0.07,1.74,0.07" />
-						<path d="M74.92,91.57c0,0,1.8,4.66,3.18,6.73c1.38,2.07,3.25,4.04,4.29,4.81s3.06,1.7,4.07,1.7c1.01,0,0.91-1.58,1.63-2.15c0.72-0.57,2.22-2.74,2.22-3.77c0-1.04-1.23-2.01-0.89-3.03c0.35-1.02,1.85-1.87,0.89-2.62c-0.96-0.76-4.29,2.18-4.29,2.18" />
-						<path d="M38.02,82.31c0,1.37-1.11,2.48-2.48,2.48c-1.37,0-2.48-1.11-2.48-2.48c0-1.37,1.11-2.48,2.48-2.48" />
-						<path d="M77.98,78.29c1.37,0,2.48,1.11,2.48,2.48c0,1.37-1.11,2.48-2.48,2.48s-2.48-1.11-2.48-2.48" />
-						<path d="M39.21,82.75c0,2.21-1.79,4.01-4.01,4.01c-2.21,0-4.01-1.79-4.01-4.01c0-2.21,1.79-4.01,4.01-4.01" />
-						<path d="M78.23,77.22c2.21,0,4.01,1.79,4.01,4.01c0,2.21-1.79,4.01-4.01,4.01c-2.21,0-4.01-1.79-4.01-4.01" />
-						<path d="M65.76,119.94c0,0-0.8-2.02-2.61-2.63c-1.81-0.61-4.99-0.91-6.88-0.92s-3.11,0.63-4.16,0c-1.05-0.63-1.66-1.39-1.66-1.39" />
-					</svg>
-				</div>
+			</div>
+			<!-- <div class="labelbig" onclick="openNavLeft()">&#9776;</div> -->
+			<div class="menu">
+				<button id="leftNavOpenButton" type="button" title="Open Left Panel">
+					<img src="assets/icons/chevrons-right.png" alt="Open Left Panel">
+				</button>
+			</div>
+			<div class="menu-item">
+				<svg version="1.1" baseProfile="basic" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40" height="20" viewBox="-30 -30 200 200" stroke-width="3" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+					<path
+						d="M7.53,64.77c-0.36-1.36-0.38-3.99,0.08-5.34c-0.98-2.51-2.88-8.13-2.22-10.9c1.77-5.81-0.07-16.1-0.95-24.92C3.55,18.78,6.31,4.11,7.61,2.26c6.24-5.37,24.76,22.67,29.81,29.81c1.57-0.17,1.91,1.72,1.78,2.93c1.87,2.82,3.54,4.3,7.03,4.17c2.71,0.61,9.25,1.73,11.56,3.31c3.57-1.82,10.55,1.6,12.57-3.03c1.23-0.82,4.4-3.07,3.94-4.96c2.19-1.04,4.21-5.39,5.03-7.5c1.7-4.14,5.96-7.51,8.29-11.14c5.21-6.14,15.78-27.02,20.71-8.09c2.32,9.62,3.98,22.54,1.38,32.15c0.51,1.33,0.58,4.5,0.59,5.92c0.89,1.69,0.82,4.84,0.2,6.61c0.38,2.52-0.66,5.62-2.47,7.4c0.17,1.03,0.2,2.67-0.49,3.55c0,0,3.21,2.42,4.04,4.54c0.84,2.12-0.59,9.51-1.18,12.53c1.32,1.57,2.75,4.67,2.17,6.81c3.3,5.31-0.68,4.27,1.38,8.48c0.69,2.34-0.51,4.65,1.09,6.71c-0.28,1.05-1.39,3.81-1.58,4.93c0.84,2.71-1.41,6.85-2.96,8.97c0,0,0.39,3.85,0.39,3.85c-4.86,1.62-1.02,2.56-4.83,5.13c-3.52,19.49-28.37,34.55-46.94,37.28c-9.52,0.18-23.4-3.44-29-11.64c-3.47-1.2-9.42-2.81-11.05-6.51c-0.68-1.05-4.4-2.51-3.75-4.24c-1.39,0.33-2.04-1.83-2.47-2.76c-3.42,0.24-3.99-8.32-3.55-10.75c0,0-1.68-3.16-1.68-3.16c0.5-1.06,0.12-1.99-0.69-2.66c0.66-1.83,0.58-1.44-1.18-1.87c-0.19-1.23,0.33-2.6-0.69-3.45c0.13-1.01-0.33-2.69-0.8-3.55c-1.65-1.36-1.5-5.44-2.56-7.3c-3.32-1.31-2.49-3.65,0.2-5.23c0.49-1.42-0.47-3.32-1.38-4.34c2.56-1.71-0.74-3.32,1.48-6.41c0.99-2.71,2.11-0.41-0.3-3.85c0.28-2.86,2.84-3.43,3.06-6.9c0.46-1.74-0.61-4.26-1.78-5.52c3.46-0.9,1.88-1.16,1.28-3.65l2.81-3" />
+					<path d="M60.64,124.58c1.69,0.63,4,0.19,5.21-1.41c-1.74,0.78-4.01,1.14-4.83-0.99c3.43-2.98-6.5-3.52-1.55,1.73" />
+					<path d="M51.44,124.77c-1.56,0.79-4.74,0.05-5.89-2.37c1.6,1.38,3.9,2.71,4.71-0.18c-3.32-3.58,5.44-3.26,2.3,1.74" />
+					<path d="M42.74,86.54c-3.68-8.21-9.86-10.1-12.32-6.32c-1.16,1.72-1.56,3.14-2.92,3.74" />
+					<path d="M41.19,87.3c0,0-1.04,0.11-2.33,0.63c-1.29,0.52-5.01,0.78-6.4-0.06c-1.39-0.83-2.55-3.2-2.55-3.2" />
+					<path d="M72.65,83.88c0,0,0.7-1.47,0.93-2.36c0.22-0.89,0.9-4.5,4.52-4.59c3.62-0.09,5.07,2.18,5.95,3.48s3.41,2.52,3.41,2.52" />
+					<path d="M74.1,84.9c2.28,3.42,7.74,2.49,9.25-1.12" />
+					<path
+						d="M34.46,114.13c1.38,2.59,0.42,5.7,0.55,9.02s6.39,9.58,11.88,10.5c15.33-0.88,26.05,3.26,34.02-13.86c1.31-4.15,4.28-5.58,7.4-7.96c-0.51,2.55-4.26,8.65-5.62,10.91c-1.51,5.29-4.92,13.59-8.8,17.57c-1.11,7.93-2.1,17.62-11.76,19.38c-12.37,1.23-15.89-4.36-15.83-16.05c-2.76-2.08-5.87-7.81-6.95-11.02" />
+					<path d="M68.11,149.19c-2.23,4.57-6.63,5.95-11.39,5.32c-3.31-0.23-5.85-2.22-6.95-5.32" />
+					<path
+						d="M40.3,41.79l0.25,2.02c0.1,0.81-0.53,1.53-1.35,1.53h-1.72l0.71,1.99c0.21,0.58,0.2,1.21-0.03,1.77l-0.25,0.63c-0.25,0.62-0.91,0.97-1.56,0.84c-1.28-0.27-3.16-0.65-3.01-0.5c0.14,0.14,0.77,1.41,1.25,2.38c0.33,0.67,0.27,1.47-0.16,2.09l0,0c-0.31,0.45-0.81,0.74-1.35,0.79L29.2,55.7l0,0c0.57,0.8,0.27,1.93-0.63,2.34l-1.37,0.62l0,0c1.07,0.44,1.13,1.92,0.11,2.46l-0.11,0.06l0,0c1.01,0.72,0.8,2.28-0.37,2.71l-0.08,0.03h0c0.76,0.63,0.57,1.85-0.35,2.21l-1.35,0.53h0c0.93,0.97,1.12,2.43,0.48,3.61l-0.24,0.44c-0.46,0.85-0.86,1.74-1.19,2.65l-1.34,3.7c-0.45,1.24-1.14,2.38-2.04,3.35l-3.23,3.49l-3.33,3.99" />
+					<path
+						d="M9.75,67.53l4.97-1.74c0.73-0.25,1.29-0.85,1.49-1.6l0.24-0.87c0.25-0.91,0.84-1.69,1.64-2.18l1.78-1.1c1.17-0.72,2.16-1.7,2.88-2.87l1.62-2.6c0.45-0.73,0.99-1.4,1.59-2.01l1.39-1.39c0.33-0.33,0.59-0.73,0.75-1.17l0.79-2.14c0.28-0.76,0.87-1.35,1.63-1.64l0.55-0.21c1.57-0.59,2.65-2.03,2.8-3.7l0.42-4.67" />
+					<path
+						d="M70.4,44.82l0.99,2.07c0.39,0.81,0.87,1.58,1.43,2.28c0.33,0.42,0.74,0.88,1.06,1.23c0.3,0.33,0.72,0.5,1.16,0.5c0.82-0.01,2.16,0.22,2.46,1.68l0,0l6.54,1.31c0.53,0.11,0.97,0.48,1.16,0.99v0c0.13,0.36,0.45,0.63,0.83,0.69l1.12,0.19c1.15,0.19,2.17,0.86,2.8,1.84l0.64,0.99c0.24,0.38,0.55,0.71,0.91,0.98l1.58,1.18c0.55,0.41,0.99,0.95,1.29,1.57l0.73,1.55c0.3,0.63,0.7,1.2,1.18,1.7c0.77,0.79,2.03,2.05,2.74,2.76c0.34,0.34,0.78,0.58,1.26,0.67c0.42,0.08,0.97,0.19,1.49,0.27c1.24,0.2,2.47-0.38,3.11-1.47l0.87-1.47" />
+					<path d="M78.02,45.64c2.43,2.96,7.99,2.96,7.99,2.96s-2.66-2.88-2.07-5.7c0.59-2.81-2-2.29-3.4-3.77c-1.41-1.48,1.11-10.65,1.11-10.65s-5.55,7.4-5.87,9.54" />
+					<path
+						d="M96.96,28.48c0.83,1.43,1.78,2.22,1.48,5.25s-2.74,5.4-2.74,5.4s-1.04,1.18-1.63,2.66c-0.59,1.48-0.15,5.4-0.67,6.44c-0.52,1.04-1.18,1.41-2.29,1.41c-1.11,0-4.22,0-5.1-1.04c-0.89-1.04-2.07-4.59-2.07-5.7c0-1.11,1.63-1.85,1.63-1.85s-0.74-1.29-0.59-2.51c0.15-1.22,1.09-2.72,2.49-3.25c1.4-0.53,3.65-1.18,4.61-2.59s-0.81-2.74-0.67-4.22C91.56,27,94.44,25,94.44,25" />
+					<path d="M14.88,39.54c0.15-0.56,0.71-0.9,1.28-0.76l2.7,0.64c0.54,0.13,1.08-0.18,1.26-0.7l0.76-2.27c0.03-0.09,0.05-0.17,0.05-0.26l0.29-4.23" />
+					<path
+						d="M18.24,26.66c0.73-0.95,2.05-1.23,3.09-0.64l2.92,1.63c0.29,0.16,0.56,0.35,0.82,0.55l2.55,2.05c1.65,1.32,2.43,3.45,2.02,5.53l-0.59,2.96c-0.05,0.27-0.12,0.52-0.22,0.78c-0.47,1.28-1.94,5.31-2.01,5.31c-0.03,0-0.44,0.92-0.87,1.92c-0.38,0.88-1.64,0.85-1.98-0.05l0,0c-0.34-0.93-2.13-0.98-2,0c0.73,5.26-1.19,4.42-1.44,3.98c-0.25-0.44-0.36-1.56-0.86-3.16c-0.33-1.08-2.04-1.75-2.22-0.64l0.14,0.86c0.5,2.45-1.01,1.49-1.74,0.15c0,0-0.61-4.26-2.02-3.44" />
+					<path d="M48.95,81.34c0.27-8.42-0.2-14.05-10.13-14.1c4.07,2.81,4.72,2.2-0.96,2.55c3.59,2.44,5.86,3.03,0,3c0,0,4.88,3.48,4.88,3.48" />
+					<path d="M66.51,81.81c-1.86-6.59-4.51-15.84,4.95-15.53c0,0-2.46,3.33-2.46,3.33c4.6-1.37,6.17-4.41,3.86,2.48c3.07-2.83,3.5-3.2,2.27,1.22c-0.8,1.5-3.99,2.59-3.99,2.59" />
+					<path d="M56.2,113.69c-10.45-1.63-14.35,2.61-9.02,13.24c1.03,1.95,6.8,4.29,9.02,4.29c2.22,0,9.97-4.36,11.09-10.8c0.49-2.79-1.41-7.53-4.59-7.17c-3.18,0.36-5.19,0.59-5.19,0.59" />
+					<path d="M46.88,133.66c0,0,1.11,3.25,1.11,3.25c1.59,4.52,4.14,12.99,10.28,12.28c5.26,0.91,7.22-1.96,8.58-6.51c0.93-2.57,3.04-8.51,3.57-11.14" />
+					<path d="M14.63,91.57l-2,3.48c2.78-0.79,3.25-1.37,1.55,1.63c0,0,3.55-2,3.55-2s-4.07,10.36-3.55,9.84c0.52-0.52,3.25-3.92,3.25-3.92l-0.37,8.88l3.99-5.4c-0.06,2.42-6.63,14.46,0,7.47c0.1,1.2-2.39,6.04,0.52,5.84c0.44-0.15-0.37,6.21,0,5.84c5.11-8.5,2.1-0.16,7.91-3.43" />
+					<path
+						d="M92.23,66.42l2.81,6.88c-1.71,2.48,0.02,3.07,1.63,4.51c-2.6,4.51,2.76,3.87-1.48,7.84c1.93,3.51,6.42,7.84,10.21,9.25c-4.4,2.3-2.16,2.64,0,5.55c0,0-2.81,4.29-2.81,4.29c0.84,2.23,1.99,3.22-1.11,3.99c0,0,2.07,2,1.85,2s-6.21,0-6.21,0l1.33,3.25c-2.8,1.8-4.5,1.5-1.48,4.66c-2.16-0.37-4.47-2.5-1.48,1.16" />
+					<path d="M42.74,90.17c0,0-1.63,3.66-2.51,4.96c-0.89,1.29-3.95,3.37-5.77,4.22c-1.82,0.84-3.6,1.58-4.96,2.29s-3.77,2.24-4.51,1.04c-0.74-1.21-1.48-9.69-0.74-11.1c0.74-1.41,1.92,4.62,4.14,4.84c0.59,0.08,0.81,0.82,1.52,0.85s1.74,0.07,1.74,0.07" />
+					<path d="M74.92,91.57c0,0,1.8,4.66,3.18,6.73c1.38,2.07,3.25,4.04,4.29,4.81s3.06,1.7,4.07,1.7c1.01,0,0.91-1.58,1.63-2.15c0.72-0.57,2.22-2.74,2.22-3.77c0-1.04-1.23-2.01-0.89-3.03c0.35-1.02,1.85-1.87,0.89-2.62c-0.96-0.76-4.29,2.18-4.29,2.18" />
+					<path d="M38.02,82.31c0,1.37-1.11,2.48-2.48,2.48c-1.37,0-2.48-1.11-2.48-2.48c0-1.37,1.11-2.48,2.48-2.48" />
+					<path d="M77.98,78.29c1.37,0,2.48,1.11,2.48,2.48c0,1.37-1.11,2.48-2.48,2.48s-2.48-1.11-2.48-2.48" />
+					<path d="M39.21,82.75c0,2.21-1.79,4.01-4.01,4.01c-2.21,0-4.01-1.79-4.01-4.01c0-2.21,1.79-4.01,4.01-4.01" />
+					<path d="M78.23,77.22c2.21,0,4.01,1.79,4.01,4.01c0,2.21-1.79,4.01-4.01,4.01c-2.21,0-4.01-1.79-4.01-4.01" />
+					<path d="M65.76,119.94c0,0-0.8-2.02-2.61-2.63c-1.81-0.61-4.99-0.91-6.88-0.92s-3.11,0.63-4.16,0c-1.05-0.63-1.66-1.39-1.66-1.39" />
+				</svg>
 			</div>
 			<div class="menu">
-				<div class="menu-item">
-					<span class="menu-title">File</span>
-					<div class="menu-content">
-						<a href="#" id="clear-canvas-new-button">New</a>
-						<a href="#" onclick="document.getElementById('fileInput').click();">Open</a>
-						<input id="fileInput" class="hidden-file-input" type="file" accept=".csv,.kad,.txt" placeholder="CSV,TXT,KAD" />
-						<a href="#" onclick="document.getElementById('saveHoles').click();">Save</a>
-						<a href="#">Save As</a>
-						<a href="#">Export</a>
-						<a href="#">Print</a>
-						<a href="#">Exit</a>
-					</div>
-				</div>
-				<div class="menu">
-					<div class="menu-item">
-						<span class="menu-title">Pattern</span>
-						<div class="menu-content">
-							<a href="#">Add Pattern...</a>
-							<a href="#">Delete Pattern</a>
-							<a href="#">Delete All</a>
-							<a href="#">Rename Blast</a>
-						</div>
-					</div>
-				</div>
-				<div class="menu">
-					<div class="menu-item">
-						<span class="menu-title">Hole</span>
-						<div class="menu-content">
-							<a href="#">Add Hole</a>
-							<a href="#">Delete Hole</a>
-							<a href="#">Delete All</a>
-							<a href="#">Show Edit Panel</a>
-						</div>
-					</div>
-				</div>
-				<div class="menu">
-					<div class="menu-item">
-						<span class="menu-title">View</span>
-						<div class="menu-content">
-							<a href="#" id="zoomInButton">Zoom In</a>
-							<a href="#" id="zoomOutButton">Zoom Out</a>
-							<a href="#" id="resetZoomButton">Reset Zoom</a>
-							<a href="#">Font Display Size</a>
-							<a href="#">Hole Display Size</a>
-							<a href="#">Toe Display Size</a>
-							<a href="#">Tie Display Size</a>
-							<a href="#">Contour Interval Spacing</a>
-							<a href="#">First Movement Size</a>
-						</div>
-					</div>
-				</div>
-				<div class="menu">
-					<div class="menu-item">
-						<span class="menu-title">Connect</span>
-						<div class="menu-content">
-							<a href="#">Single Tie Connect</a>
-							<a href="#">Multiple Tie Connect</a>
-							<a href="#">Show Connector Panel...</a>
-							<a href="#">Adjust Connector Distance</a>
-						</div>
-					</div>
-				</div>
-				<div class="menu">
-					<div class="menu-item">
-						<span class="menu-title">Analyse</span>
-						<div class="menu-content">
-							<a href="#">Animate Firing</a>
-							<a href="#">Time Window</a>
-						</div>
-					</div>
-				</div>
-				<div class="menu">
-					<div class="menu-item">
-						<span class="menu-title">Help</span>
-						<div class="menu-content">
-							<a href="#" id="helpButton">Help</a>
-							<a href="#" id="buttonGoBack">Open Website</a>
-							<a href="#" onclick="window.location.href='mailto:blastingapps.xyz@gmail.com?subject=Kirra2D%20Desktop%20Enquiry'">Contact</a>
-							<a href="#">About</a>
-						</div>
-					</div>
-				</div>
-				<div class="spacer"></div>
-				<div class="dark-mode-toggle">
-					<button id="dark-mode-toggle" type="button" placeholder="Dark/Light Mode" title="Toggle Dark/Light Mode"></button>
-				</div>
+				<b>
+					<font size="3">&nbsp;&nbsp;Kirra&nbsp;&nbsp;</font>
+				</b>
 			</div>
+			<div class="menu">
+				<select id="languageSelect" title="Select Language">
+					<option value="en">English</option>
+					<option value="zh_CN">Chinese</option>
+					<option value="fr">French</option>
+					<option value="mn">Mongolian</option>
+					<option value="ru">Russian</option>
+					<option value="es">Spanish</option>
+				</select>
+			</div>
+
+			<!-- <div class="spacer"></div> -->
+
+			<div class="menu">
+				<button id="helpButton" type="button" title="Help">
+					<img src="assets/icons/help.png" alt="Help">
+				</button>
+			</div>
+			<div class="menu">
+				<!--Zoom In-->
+				<button id="zoomInButton" type="button" title="Zoom In">
+					<img src="assets/icons/circle-plus.png" alt="Zoom In">
+				</button>
+			</div>
+			<div class="menu">
+				<!--Zoom Out-->
+				<button id="zoomOutButton" type="button" title="Zoom Out">
+					<img src="assets/icons/circle-minus.png" alt="Zoom Out">
+				</button>
+			</div>
+			<!-- <div class="menu">-->
+			<!--Reset Zoom-->
+			<!-- <button id="resetZoomButton">R</button>&nbsp;&nbsp;-->
+			<!--</div> -->
+			<div class="menu">
+				<button id="buttonGoBack" type="button" title="Go Back" placeholder="Go Back">
+					<img src="assets/icons/replace.png" alt="Go Back">
+				</button>&nbsp;&nbsp;
+			</div>
+			<div class="spacer"></div>
+			<div class="dark-mode-toggle">
+				<input type="checkbox" id="dark-mode-toggle" placeholder="Toggle mode" />
+				<label for="dark-mode-toggle">
+					<img src="assets/icons/moon.png" alt="Dark Mode" class="dark-mode-toggle-icon">
+					<img src="assets/icons/sun.png" alt="Light Mode" class="light-mode-toggle-icon">
+				</label>
+			</div>
+			<div class="spacer"></div>
+			<!-- <div class="labelbig" onclick="openNavRight()">&#9776;</div> -->
+			<div class="menu">
+				<button id="rightNavOpenButton" type="button" title="Open Right Panel">
+					<img src="assets/icons/chevrons-left.png" alt="Open Right Panel">
+				</button>
+			</div>
+
 		</div>
 
-
-
-
-		<!--START CANVAS AND MODE DISPLY BUTTONS-->
-
-
-		<div class="canvas-container">
+		<div class="main-content">
+			<!-- CANVAS  -->
+			<div class="canvas-container">
+				<!-- CANVAS AS THE FIRST -->
+				<canvas id="canvas"></canvas>
+				<!-- TOGGLE BUTTONS CONTAINER INSIDE THE CANVAS CONTAINER -->
+				<div class="toggle-buttons-container">
+					<div class="toggle-buttons-custom">
+						<input type="checkbox" id="display1" name="display" value="Hole ID" placeholder="Hole ID" checked>
+						<label for="display1" class="icon-button" title="Hole ID">
+							<img src="assets/icons/holename.png" alt="Hole ID">
+						</label>
+						<input type="checkbox" id="display2" name="display" value="Hole Length" placeholder="Hole Length">
+						<label for="display2" class="icon-button" title="Hole Length">
+							<img src="assets/icons/holelength.png" alt="Hole Length">
+						</label>
+						<input type="checkbox" id="display2A" name="display" value="Hole Diameter" placeholder="Hole Diameter">
+						<label for="display2A" class="icon-button" title="Hole Diameter">
+							<img src="assets/icons/holediam.png" alt="Hole Diameter">
+						</label>
+						<input type="checkbox" id="display3" name="display" value="Angle" placeholder="Angle">
+						<label for="display3" class="icon-button" title="Hole Angle">
+							<img src="assets/icons/holeangle.png" alt="Hole Angle">
+						</label>
+						<input type="checkbox" id="display4" name="display" value="Dip" placeholder="Dip">
+						<label for="display4" class="icon-button" title="Hole Dip">
+							<img src="assets/icons/holedip.png" alt="Hole Dip">
+						</label>
+						<input type="checkbox" id="display5" name="display" value="Bearing" placeholder="Bearing">
+						<label for="display5" class="icon-button" title="Hole Bearing">
+							<img src="assets/icons/holebearing.png" alt="Hole Bearing">
+						</label>
+						<input type="checkbox" id="display5B" name="display" value="Subdrill" placeholder="Subdrill">
+						<label for="display5B" class="icon-button" title="Hole Subdrill">
+							<img src="assets/icons/holesubdrill.png" alt="Hole Subdrill">
+						</label>
+						<input type="checkbox" id="display5A" name="display" value="Ties" placeholder="Ties">
+						<label for="display5A" class="icon-button" title="Ties">
+							<img src="assets/icons/tieconnect.png" alt="Ties">
+						</label>
+						<input type="checkbox" id="display6" name="display" value="Connectors" placeholder="Delay Value">
+						<label for="display6" class="icon-button" title="Delay Value">
+							<img src="assets/icons/tiedelays.png" alt="Delay Value">
+						</label>
+						<input type="checkbox" id="display6A" name="display" value="TimesOnly" placeholder="TimesOnly">
+						<label for="display6A" class="icon-button" title="Hole Time">
+							<img src="assets/icons/holetimes.png" alt="Hole Time">
+						</label>
+						<!-- <input type="checkbox" id="display7" name="display" value="Times" placeholder="Times"> -->
+						<input type="checkbox" id="display8" name="display" value="Contours" placeholder="Contours">
+						<label for="display8" class="icon-button" title="Contours">
+							<img src="assets/icons/contours.png" alt="Contours">
+						</label>
+						<input type="checkbox" id="display8A" name="display" value="Slope" placeholder="slope">
+						<label for="display8A" class="icon-button" title="Slope">
+							<img src="assets/icons/slopemap.png" alt="Slope">
+						</label>
+						<input type="checkbox" id="display8B" name="display" value="Relief" placeholder="relief">
+						<label for="display8B" class="icon-button" title="Relief">
+							<img src="assets/icons/reliefmap.png" alt="Relief">
+						</label>
+						<input type="checkbox" id="display8C" name="display" value="direction" placeholder="direction">
+						<label for="display8C" class="icon-button" title="First Movement">
+							<img src="assets/icons/firstmovement.png" alt="First Movement">
+						</label>
+						<input type="checkbox" id="display9" name="display" value="xlocation" placeholder="xlocation">
+						<label for="display9" class="icon-button" title="Hole X Location">
+							<img src="assets/icons/xmeterseast.png" alt="Hole X Location">
+						</label>
+						<input type="checkbox" id="display10" name="display" value="ylocation" placeholder="ylocation">
+						<label for="display10" class="icon-button" title="Hole Y Location">
+							<img src="assets/icons/ymetersnorth.png" alt="Hole Y Location">
+						</label>
+						<input type="checkbox" id="display11" name="display" value="zlocation" placeholder="zlocation">
+						<label for="display11" class="icon-button" title="Hole Z Location">
+							<img src="assets/icons/zmetersalt.png" alt="Hole Z Location">
+						</label>
+						<input type="checkbox" id="display12" name="display" value="holeType" placeholder="holeType">
+						<label for="display12" class="icon-button" title="Hole Type">
+							<img src="assets/icons/holetype.png" alt="Hole Type">
+						</label>
+						<input type="checkbox" id="display13" name="display" value="measure" placeholder="measure">
+						<label for="display13" class="icon-button" title="Measured Length">
+							<img src="assets/icons/measuredlength.png" alt="Measured Length">
+						</label>
+						<input type="checkbox" id="display14" name="display" value="mass" placeholder="mass">
+						<label for="display14" class="icon-button" title="Measured Mass">
+							<img src="assets/icons/measuredmass.png" alt="Measured Mass">
+						</label>
+						<input type="checkbox" id="display15" name="display" value="comment" placeholder="comment">
+						<label for="display15" class="icon-button" title="Comment">
+							<img src="assets/icons/measuredcomment.png" alt="Comment">
+						</label>
+						<input type="checkbox" id="display16" name="display" value="voronoi" placeholder="voronoi">
+						<label for="display16" class="icon-button" title="Voronoi">
+							<img src="assets/icons/hexagon-letter-v.png" alt="Voronoi">
+						</label>
+					</div>
+				</div>
+			</div>
 			<!--START LEFT HAND SIDE PANEL-->
 			<div id="sidenavLeft" class="sidenav-Left">
 
 				<!-- Close button for the Lefthand panel-->
-				<a href="javascript:void(0)" class="closebtnL" onclick="closeNavLeft()">&times;</a>
-				<button class="accordion">+ or - Holes</button>
+				<button id="leftNavCloseButton" type="button" class="closebtnL" title="Close Left Panel">&times;</button>
+
+				<br>
+				<br>
+				<button class="accordion" id="openOrImportAcc">
+					<span>Open or Import files</span>
+				</button>
+
+				<div class="panel">
+					<!-- Hidden file inputs -->
+					<input type="file" name="fileInput" id="fileInput" accept=".csv,.kad,.txt" class="hidden-file-input" placeholder="fileInput" title="File Holes and KAD Input">
+					<input type="file" name="fileInputCustomCSV" id="fileInputCustomCSV" accept=".csv,.txt" class="hidden-file-input" placeholder="fileInputCustomCSV" title="Custom CSV Import">
+					<input type="file" name="fileInputDXF" id="fileInputDXF" accept=".dxf" class="hidden-file-input" placeholder="fileInputDXF" title="File DXF Input">
+					<input type="file" name="fileInputMeasured" id="fileInputMeasured" accept=".csv" class="hidden-file-input" placeholder="fileInputMeasured" title="Measured Values Input">
+					<input type="file" name="fileInputSurface" id="fileInputSurface" accept=".obj,.csv,.txt,.asc,.xyz" class="hidden-file-input" placeholder="fileInputSurface" title="File Surface Input (3 columns {X,Y,Z})">
+					<input type="file" name="fileInputGeotiff" id="fileInputGeotiff" accept=".tif,.tiff" class="hidden-file-input" placeholder="fileInputGeotiff" title="File Geotiff Input">
+
+					<!-- Icon buttons grid -->
+					<div class="file-import-grid">
+						<label class="icon-button file-import-btn" data-target="fileInput" title="File Holes and KAD Input">
+							<img src="assets/icons/k2D-file-import.png" alt="Load Holes & KAD">
+						</label>
+						<label class="icon-button file-import-btn" data-target="fileInputCustomCSV" title="Custom CSV Import">
+							<img src="assets/icons/load-holes-csv.png" alt="Load CSV">
+						</label>
+						<label class="icon-button file-import-btn" data-target="fileInputDXF" title="File DXF Input">
+							<img src="assets/icons/load-dxf.png" alt="Load DXF">
+						</label>
+						<label class="icon-button file-import-btn" data-target="fileInputMeasured" title="Measured Values Input">
+							<img src="assets/icons/measured-import.png" alt="Load Measured Values">
+						</label>
+						<label class="icon-button file-import-btn" data-target="fileInputSurface" title="File Surface Input (3 columns {X,Y,Z})">
+							<img src="assets/icons/load-obj.png" alt="Load Surface">
+						</label>
+						<label class="icon-button file-import-btn" data-target="fileInputGeotiff" title="File Geotiff Input">
+							<img src="assets/icons/TIF-image.png" alt="Load Geotiff">
+						</label>
+						<!-- Print buttons -->
+						<label class="icon-button file-import-btn" id="printToPDFButton" title="Print to PDF">
+							<img src="assets/icons/print-to-PDF.png" alt="Print to PDF">
+						</label>
+						<!-- <label class="icon-button file-import-btn" onclick="printCanvas()" title="Print Canvas">
+							<img src="assets/icons/print-to-printer.png" alt="Print Canvas">
+						</label>
+						<label class="icon-button file-import-btn" onclick="printToFile()" title="Print to File">
+							<img src="assets/icons/print-to-file.png" alt="Print to File">
+						</label> -->
+					</div>
+					<hr>
+					<div class="switch-container">
+						<label for="addPrintPreviewToggle" id="addPrintPreviewLabel">Print Preview Mode:</label>
+						<label class="switch">
+							<input type="checkbox" id="addPrintPreviewToggle" placeholder="Add Print Preview Toggle">
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<div class="switch-container">
+						<label for="paperSize" id="paperSizeLabel">Paper Size:</label>
+						<select id="paperSize" onchange="changePaperSize()">
+							<option value="A4">A4</option>
+							<option value="A3">A3</option>
+							<option value="A2">A2</option>
+							<option value="A1">A1</option>
+							<option value="A0">A0</option>
+						</select>
+						<label for="orientation" id="orientationLabel"> Orientation:</label>
+						<select id="orientation" onchange="changeOrientation()">
+							<option value="landscape">Landscape</option>
+							<option value="portrait">Portrait</option>
+						</select>
+					</div>
+				</div>
+
+				<button class="accordion" id="plusorminusHolesAcc">
+					<span>+ or - Holes</span>
+				</button>
 				<div class="panel">
 					<div class="switch-container">
-						<label for="addPatternSwitch">Add Pattern:</label>
+						<label for="addPatternSwitch" id="addPatternLabel">Add Pattern:</label>
 						<label class="switch">
 							<input type="checkbox" id="addPatternSwitch" placeholder="Add Pattern Switch">
 							<span class="slider round"></span>
@@ -196,27 +1714,28 @@
 					</div>
 					<br>
 					<div class="switch-container">
-						<label for="addHoleSwitch">Adding Hole:</label>
+						<label for="addHoleSwitch" id="addHoleLabel">Adding Hole:</label>
 						<label class="switch">
 							<input type="checkbox" id="addHoleSwitch" placeholder="Add Switch">
 							<span class="slider round"></span>
 						</label>
 					</div>
 					<br>
-					<!--<button id="addHoleButton">&#9673;+</button>-->
-					<!--<div class="spacer"></div>-->
 					<div class="switch-container">
-						<label for="deleteHoleSwitch">Delete :</label>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						<label for="deleteHoleSwitch" id="deleteHoleLabel">Delete
+							:</label>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 						<label class="switch">
 							<input type="checkbox" id="deleteHoleSwitch" placeholder="Deleted Switch">
 							<span class="slider round"></span>
 						</label>
+					</div>
+					<div class="switch-container">
 						<div class="button-norm" id="deleteHoleButton">Hole</div>&nbsp;
 						<div class="button-norm" id="deletePatternButton">Pattern</div>&nbsp;
 						<div class="button-norm-red" id="deleteAllPatternsButton">All</div>
 					</div>
 					<div class="switch-container">
-						<label for="deleteHoleSwitch">Renumber when deleting:</label>
+						<label for="renumberHoles">Renumber when deleting:</label>
 						<label class="switch">
 							<input type="checkbox" id="renumberHoles" placeholder="renumber">
 							<span class="slider round"></span>
@@ -226,7 +1745,9 @@
 					</div>
 				</div>
 
-				<button class="accordion">Edit Holes</button>
+				<button class="accordion" id="editHolesAcc">
+					<span>Edit Holes</span>
+				</button>
 				<div class="panel">
 					Dialog Edit
 					<div class="switch-container">
@@ -258,6 +1779,16 @@
 					<hr>
 					Slider Edit
 					<div class="switch-container">
+						<div class="label2" id="selectionModeLabel">Allow holes to be edited</div>
+						<div class="spacer"></div>
+						<label class="switch">
+							<input type="checkbox" id="editHolesToggle" placeholder="editHolesToggle">
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<br>
+					<!-- Remoove in Future-->
+					<div class="switch-container">
 						<div class="label2" id="selectionModeLabel">Multiple select with slider edits</div>
 						<div class="spacer"></div>
 						<label class="switch">
@@ -267,92 +1798,30 @@
 					</div>
 					<br>
 					<div class="button-container-1col">
-
-						<div class="switch-container">
-							<div class="label2" for="editEastingButton">Edit(X)</div>
-							<div class="spacer"></div>
-							<label class="switch">
-								<input type="checkbox" id="editEastingButton" placeholder="editEasting">
-								<span class="slider round"></span>
-							</label>
-						</div>
 						<div class="label2" id="holeEastingLabel">X :</div>
 						<input type="range" step="0.1" min="-20" max="20" id="holeEastingSlider" name="holeX" value="0" placeholder="Hole X">
-
-						<div class="switch-container">
-							<div class="label2" for="editNorthingButton">Edit(Y)</div>
-							<div class="spacer"></div>
-							<label class="switch">
-								<input type="checkbox" id="editNorthingButton" placeholder="editNorthing">
-								<span class="slider round"></span>
-							</label>
-						</div>
 						<div class="label2" id="holeNorthingLabel">Y :</div>
 						<input type="range" step="0.1" min="-20" max="20" id="holeNorthingSlider" name="holeY" value="0" placeholder="Hole Y">
-
-						<div class="switch-container">
-							<div class="label2" for="editElevationButton">Edit(Z)</div>
-							<div class="spacer"></div>
-							<label class="switch">
-								<input type="checkbox" id="editElevationButton" placeholder="editElevation">
-								<span class="slider round"></span>
-							</label>
-						</div>
 						<div class="label2" id="holeElevationLabel">Z :</div>
 						<input type="range" step="0.1" min="-20" max="20" id="holeElevationSlider" name="holeZ" value="0" placeholder="Hole Z">
-
-						<div class="switch-container">
-							<div class="label2" id="editDiameterLabel">Edit Diameter</div>
-							<div class="spacer"></div>
-							<label class="switch">
-								<input type="checkbox" id="editDiameterButton" placeholder="editDiameter">
-								<span class="slider round"></span>
-							</label>
-						</div>
 						<div class="label2" id="holeDiameterLabel">Diameter :</div>
 						<input type="range" step="1" min="0" max="500" id="holeDiameterSlider" name="holeDiameter" value="200" placeholder="Hole Diameter">
-						<div class="switch-container">
-							<div class="label2" id="editLengthLabel">Edit Length</div>
-							<div class="spacer"></div>
-							<label class="switch">
-								<input type="checkbox" id="editLengthButton" placeholder="editLength">
-								<span class="slider round"></span>
-							</label>
-						</div>
 						<div class="label2" id="holeLengthLabel">Length :</div>
 						<input type="range" step="0.1" min="0.0" max="100" id="holeLengthSlider" name="holeLength" value="10" placeholder="Hole Length">
-
-						<div class="switch-container">
-							<div class="label2" id="editAngleLabel" for="editAngleButton">Edit Angle</div>
-							<div class="spacer"></div>
-							<label class="switch">
-								<input type="checkbox" id="editAngleButton" placeholder="editAngle">
-								<span class="slider round"></span>
-							</label>
-						</div>
 						<div class="label2" id="holeAngleLabel">Angle :</div>
-						<input type="range" step="1" min="0" max="60" id="holeAngleSlider" name="holeAngle" value="0" placeholder="Hole Angle">
-
-						<div class="switch-container">
-							<div class="label2" id="editBearingLabel" for="editBearingButton">Edit Bearing</div>
-							<div class="spacer"></div>
-							<label class="switch">
-								<input type="checkbox" id="editBearingButton" placeholder="editBearing">
-								<span class="slider round"></span>
-							</label>
-						</div>
+						<input type="range" step="1" min="0" max="90" id="holeAngleSlider" name="holeAngle" value="0" placeholder="Hole Angle">
 						<div class="label2" id="holeBearingLabel">Bearing :</div>
 						<input type="range" step="0.5" min="0" max="360" id="holeBearingSlider" name="holeBearing" value="0" placeholder="Hole Bearing">
+						<div class="label2" id="holeSubdrillLabel">Subdrill :</div>
+						<input type="range" step="0.1" min="-20" max="20" id="holeSubdrillSlider" name="holeSubdrill" value="0" placeholder="Hole Subdrill">
 					</div>
-
-
 				</div>
-
-				<button class="accordion">Record Actuals</button>
+				<button class="accordion" id="recordActualsAcc">
+					<span>Record Actuals</span></button>
 				<div class="panel">
 					Dialog Record
 					<div class="switch-container">
-						<div class="label2" id="editLengthPopupLabel">Record Length with dialog</div>
+						<div class="label2" id="recordLengthPopupLabel">Record Length with dialog</div>
 						<div class="spacer"></div>
 						<label class="switch">
 							<input type="checkbox" id="measuredLengthSwitch" placeholder="recordLength">
@@ -361,7 +1830,7 @@
 					</div>
 					<br>
 					<div class="switch-container">
-						<div class="label2" id="editLengthPopupLabel">Record Mass with dialog</div>
+						<div class="label2" id="editMassPopupLabel">Record Mass with dialog</div>
 						<div class="spacer"></div>
 						<label class="switch">
 							<input type="checkbox" id="measuredMassSwitch" placeholder="recordMass">
@@ -379,61 +1848,107 @@
 					</div>
 				</div>
 				<!-- View Conrols -->
-				<button class="accordion">View Controls</button>
+				<button class="accordion" id="viewControlsAcc">
+					<span>View Controls & Snap</span></button>
 				<div class="panel">
 					<div class="button-container-1col">
-						<div class="label2" id="fontLabel">Font Size : </div>
+						<div class="label2" id="fontLabel">Font Size (pt): 10pt</div>
 						<input type="range" id="fontSlider" min="1" max="100" value="10" step="1" placeholder="Select font size">
-						<div class="label2" id="connLabel">Tie Size : </div>
+						<div class="label2" id="connLabel">Tie Size (units): 3.0</div>
 						<input type="range" id="connSlider" min="0.001" max="15" value="3" step="0.1" placeholder="Select connector size">
-						<div class="label2" id="toeLabel">Toe Size : </div>
-						<input type="range" id="toeSlider" min="0.001" max="30" value="0.5" step="0.1" placeholder="Select toe circle size">
-						<div class="label2" id="holeLabel">Hole Adjust : </div>
+						<div class="label2" id="toeLabel">Toe Size (m): 0.5m</div>
+						<input type="range" id="toeSlider" min="0.001" max="30" value=".5" step="0.1" placeholder="Select toe circle size">
+						<div class="label2" id="holeLabel">Hole Adjust (units): 2.0</div>
 						<input type="range" id="holeSlider" min="1" max="10" value="2" step="0.1" placeholder="Select hole circle size">
-						<div class="label2" id="intervalLabel">Interval : </div>
+						<div class="label2" id="intervalLabel">Interval (ms): 100ms</div>
 						<input type="range" id="intervalSlider" min="5" max="1000" value="100" step="5" placeholder="Adjust the Interval">
-						<div class="label2" id="firstMovementLabel">First Movement Size : </div>
-						<input type="range" id="firstMovementSlider" min="1" max="5" value="2" step="0.2" placeholder="Adjust the First Movement">
-
+						<div class="label2" id="firstMovementLabel">First Movement Size (units): 2.0</div>
+						<input type="range" id="firstMovementSlider" min="0" max="5" value="2" step="0.1" placeholder="Adjust the First Movement">
+						<div class="label2" id="snapToleranceLabel">Snap Tolerance (px): 15px </div>
+						<input type="range" id="snapToleranceSlider" min="0" max="100" value="15" step="1" placeholder="Adjust the Snap Tolerance">
 					</div>
 				</div>
+				<!-- OUTPUT FILES -->
+				<button class="accordion" id="outputfilesAcc">
+					<span>Output Files</span></button>
+				<div class="panel">
 
-				<button class="accordion">Output Files</button>
-				<div class="panel">
-					<div class="label2">Save Holes to a File (importable)</div>
-					<div class="button-save1" id="saveHoles">KIRRA - This outputs a 14 column *.csv file that can be used to save
-						blasts with names.</div>
-					<div class="label2">Save Drawing to a File (importable)</div>
-					<div class="button-save1" id="saveKAD">KAD - This outputs a Kirra App Drawing *.kad file that can be used to save
-						drawings.</div>
-					<div class="label2">Save All Hole aspects to a File (shareable)</div>
-					<div class="button-save3" id="saveAll">EXTRA - This outputs additional columns like Length, Dip, Angle, bearing
-						and Initiation time.</div>
-					<div class="label2">Save Actual Values to a File (shareable)</div>
-					<div class="button-save3" id="saveMeasures">EXTRA - This outputs actual recordings like measured depth and charge kilograms.</div>
-					<br>
-					<div class="button-container-2coleven">
-						<div class="button-save2" id="saveIREDES">EPIROC - XML - This outputs IREDES XML Drill file for Surface Manager
-							Epiroc Rigs.(XML file format, inclusive of hole diameter and hole type. www.IREDES.org)</div>
-						<div class="button-save2" id="saveAQM">MINESTAR - AQM - Outputs upto 11 columns (Angle, Azimuth, Blast,
-							Diameter, Easting, Elevation, Ignore, Instruction, Material Type, Name, Northing or Pattern)</div>
-					</div>
+					<!-- Save Holes CSV -->
+					<div class="label2" id="label_saveHoles">Save Holes to a File (importable)</div>
+					<button class="button-save1" id="saveHoles">
+						KIRRA - Outputs a 14-column *.csv file for saving blasts with names
+					</button>
+
+					<!-- Save KAD Drawing -->
+					<div class="label2" id="label_saveKAD">Save Drawing to a File (importable)</div>
+					<button class="button-save1" id="saveKAD">
+						KAD - Outputs a Kirra App Drawing *.kad file for saving drawings
+					</button>
+
+					<!-- Save All Aspects -->
+					<div class="label2" id="label_saveAll">Save All Hole Aspects to a File (shareable)</div>
+					<button class="button-save3" id="saveAll">
+						EXTRA - Includes Length, Dip, Angle, Bearing, and Initiation Time
+					</button>
+
+					<!-- Save Measured Data -->
+					<div class="label2" id="label_saveMeasures">Save Actual Values to a File (shareable)</div>
+					<button class="button-save3" id="saveMeasures">
+						EXTRA - Outputs measured depth and charge kilograms
+					</button>
+
+					<!-- DXF Exports -->
+					<div class="label2" id="label_exportHolesDXF">Export Holes to DXF</div>
+					<button class="button-save2" id="exportHolesDXF">Export Holes to DXF, Collar, Track and Hole Id
+						as Text
+						Object</button>
+
+					<div class="label2" id="label_exportDrawingDXF">Export Drawing to DXF</div>
+					<button class="button-save2" id="exportDrawingDXF">Export Drawing to DXF, points, lines, poly,
+						circles,
+						text</button>
+
+					<!-- IREDES and AQM -->
+					<div class="label2" id="label_saveIREDES">Export for Epiroc Surface Manager</div>
+					<button class="button-save2" id="saveIREDES">
+						EPIROC - XML - IREDES XML including diameter and hole type
+					</button>
+
+					<div class="label2" id="label_saveAQM">Export for MineStar AQM</div>
+					<button class="button-save2" id="saveAQM">
+						MINESTAR - AQM - Outputs up to 11 columns (Angle, Azimuth, Diameter, etc.)
+					</button>
+
 				</div>
-				<button class="accordion">Example and Helper Files</button>
+
+				<!--EXAMPLES FILE-->
+				<!-- <button class="accordion" id="exampleFilesAcc">
+					<span>Example and Helper Files</span></button>
 				<div class="panel">
-					<br><a href="/tieintest1.csv"> Download test tie in file 1</a>
-					<br><a href="/tieintest2.csv"> Download test tie in file 2</a>
-					<br><a href="/tieintest3.csv" font-size="12px"> Download test tie in file 3</a>
-					<br><a href="/KAD2023_PITSHELL.kad" font-size="12px"> Download KAD PITSHELL drawing file</a>
-					<br><a href="/KAD2023_PITSHELL.txt" font-size="12px" download="KAD2023_PITSHELL.txt"> Download mobile iOS PITSHELL
+					<br><a href="/tieintest1.csv" id="testfile1"> Download test tie in file 1</a>
+					<br><a href="/tieintest2.csv" id="testfile2"> Download test tie in file 2</a>
+					<br><a href="/tieintest3.csv" id="testfile3" font-size="12px"> Download test tie in file 3</a>
+					<br><a href="/KAD2023_PITSHELL.kad" id="testfile4" font-size="12px"> Download KAD PITSHELL
+						drawing file</a>
+					<br><a href="/KAD2023_PITSHELL.txt" id="testfile5" font-size="12px" download="KAD2023_PITSHELL.txt">
+						Download mobile iOS PITSHELL
 						version</a>
-					<br><a href="/KAD2023_BLASTMASTER.kad" font-size="12px"> Download KAD BLASTMASTER drawing file</a>
-					<br><a href="/KAD2023_BLASTMASTER.txt" font-size="12px" download="KAD2023_BLASTMASTER.txt"> Download mobile iOS
+					<br><a href="/KAD2023_BLASTMASTER.kad" id="testfile6" font-size="12px"> Download KAD BLASTMASTER
+						drawing
+						file</a>
+					<br><a href="/KAD2023_BLASTMASTER.txt" id="testfile7" font-size="12px" download="KAD2023_BLASTMASTER.txt">
+						Download mobile iOS
 						BLASTMASTER version</a>
-					<br><a href="/blastingapps-xyz-converter.xlsx" font-size="12px"> Download the conversion excel tool</a><br><br>
-				</div>
-				<button class="accordion">About</button>
-				<div class="panel">
+					<br><a href="/blastingapps-xyz-converter.xlsx" id="testfile8" font-size="12px"> Download the
+						conversion
+						excel tool</a><br><br>
+				</div> -->
+				<button class="accordion" id="aboutAcc">
+					<span>About</span></button>
+				<div class="panel" id="aboutPanel">
+					<!-- add a developer mode button-->
+					<input type="checkbox" id="developerMode"> <label for="developerMode">Developer Mode</label>
+					<br>
 					<font size="1"><i>Created by Brent Buffham &#169; 2023. <br>
 							<hr> <br>
 							Importing a CSV files: NO HEADERS
@@ -441,158 +1956,211 @@
 							<br>4 column (ID, X, Y, Z) = Dummy Holes or
 							<br>7 column (ID, X, Y, Z, toeX, toeY, toeZ) = Blast Holes or
 							<br>9 column (ID, X, Y, Z, toeX, ToeY, ToeZ, Hole Diameter, Hole Type) or
-							<br>12 column (ID, X, Y, Z, toeX, ToeY, ToeZ, Hole Diameter, Hole Type, FromHole, Delay, Colour)</font></i>
+							<br>12 column (ID, X, Y, Z, toeX, ToeY, ToeZ, Hole Diameter, Hole Type, FromHole, Delay, Color)
+							or
+							<br>14 column (entityName, entityType, ID, X, Y, Z, toeX, ToeY, ToeZ, Hole Diameter, Hole Type,
+							FromHole, Delay, Color,
+							Color) or
+							<br>30 column (entityName,entityType,ID ,X,Y,Z,toeX,toeY,gradeX,gradeY, gradeZ, subdrillAmount,
+							subdrillLength, benchHeight, holeDiameter, holeType, fromHoleID, timingDelayMilliseconds,
+							colorHexDecimal, holeLengthCalculated, holeAngle,holeBearing,initiationTime, measuredLength,
+							measuredLengthTimeStamp, measuredMass, measuredMassTimeStamp, measuredComment,
+							measuredCommentTimeStamp) full hole data
+							<br>
+					</font></i>
 				</div>
 				<div id="resizeHandleLeft" class="resize-handle-left"></div>
 			</div>
 			<!--END LEFT HAND SIDE PANEL-->
 			<!--START RIGHT HAND SIDE PANEL-->
 			<div id="sidenavRight" class="sidenav-Right">
-				<div><a href="javascript:void(0)" class="closebtnR" onclick="closeNavRight()">&times;</a>
-				</div><br><br>
+
+				<button id="rightNavCloseButton" type="button" class="closebtnR" title="Close Right Panel">&times;</button>
+				<br>
+				<br>
 				<!--Connector-->
-				<button class="accordion">Connectors</button>
+				<button class="accordion" id="connectorsAcc">
+					<span>Connectors</span>
+				</button>
 				<div class="panel">
-					<div class="label2" id="singleTie">Tie-in one by one:
+					<div class="switch-container">
+						<div class="label2" id="singleTie">Tie-in one by one:</div>
 						<label class="switch">
 							<input type="checkbox" id="addConnectorButton" placeholder="connectorSwitch">
 							<span class="slider round"></span>
 						</label>
-					</div><br>
-					<div class="label2" id="multiTie">Tie-in all in a line:
+					</div>
+					<br>
+					<div class="switch-container">
+						<div class="label2" id="multiTie">Tie-in all in a line:</div>
 						<label class="switch">
 							<input type="checkbox" id="addMultiConnectorButton" placeholder="multiconnectorSwitch">
 							<span class="slider round"></span>
 						</label>
-					</div><br>
+					</div>
+					<br>
+
 					<div class="button-container-2col">
-						<div class="label2" id="delayLabel">Delay:
+						<div>
+							<label class="label2" id="delayLabel">Delay:</label>
 							<input type="number2" step="1" min="-1000" max="1000" id="delay" name="delay" value="25" placeholder="Delay Amount">
 						</div>
-						<!-- Add a colour picker
-		            <label class="label2" id="colourLabel">&nbsp;&nbsp;&nbsp;&nbsp;Colour:</label>
-		              <input type="color" id="connectorColour" name="connectorColour" value="#ff0000" placeholder="Delay Colour">          -->
-						<div class="button-norm" id="connectorColour" name="connectorColour" data-jscolor="{value:'#FF0000'}"> Colour
-						</div>
+						<div class="button-norm" id="connectorColor" name="connectorColor" data-jscolor="{value:'#FF0000'}">Color</div>
 					</div>
 					<br>
 					<div class="label2" id="connectLabel">Connect Distance : </div>
-					<input type="range" id="connectSlider" min="0.1" max="20" value="1" step=".1" placeholder="Adjust the Coonnection Distance">
+					<input type="range" id="connectSlider" min="0.1" max="20" value="1" step=".1" placeholder="Adjust the Connection Distance">
 				</div>
-				<button class="accordion">Animate Firing</button>
+				<button class="accordion" id="animateAcc">
+					<span>Animate Firing</span></button>
 				<div class="panel">
-					<button class="button-norm" id="play">PLAY............</button>
+					<button class="button-norm" id="play">PLAY @ 1.0x</button>
 					<button class="button-norm" id="stop">STOP</button>
 					<br>
-					<div class="label2" id="playSpeedLabel">Play Speed : 1</div>
-					<input type="range" step="0.01" min="0.01" max="2.5" value="1" id="playSpeed" placeholder="Select play speed">
+					<input type="range" step="0.05" min="0.01" max="5" value="1.0" id="playSpeed" placeholder="Select play speed">
 				</div>
-				<button class="accordion">Time Window</button>
+				<button class="accordion" id="timeWindowAcc">
+					<span>Time Window</span></button>
 				<div class="panel">
-					<div class="chart-container" id="timeChartContainer"></div>
-					<a class="label4" id="timeRangeLabel">Time window : 8 ms</a>
-					<input type="range" min="1" max="25" value="8" id="timeRange" placeholder="Select time window size">
+					<div class="chart-container" id="timeChart"></div>
+					<a class="label2" id="timeRangeLabel">Time window : 8 ms</a>
+					<input type="range" min="1" max="100" value="8" id="timeRange" placeholder="Select time window size">
+					<a class="label2" id="timeOffsetLabel">Time Offset : 0 ms</a>
+					<input type="range" min="0" max="50" value="0" id="timeOffset" placeholder="Select time offset">
+					<div class="radio-button-bar">
+						<div>
+							<input type="radio" id="holeCountRadio" name="displayMode" value="holeCount" title="Hole Count" checked>
+							<label class="label2" id="holeCountLabel" for="holeCountRadio">Hole Count</label>
+						</div>
+						<div>
+							<input type="radio" id="measuredMassRadio" name="displayMode" value="measuredCharge" title="Measured Mass">
+							<label class="label2" id="measuredMassLabel" for="measuredMassRadio">Measured
+								Charge</label>
+						</div>
+					</div>
 				</div>
-				<button class="accordion">Drawing Tools</button>
+				<button class="accordion" id="drawingTools">
+					<span>Drawing Tools</span></button>
 				<div class="panel">
-					<div class="label2" id="elevationName">Elevation (z):&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					<div class="switch-container">
+						<div class="label2" id="elevationName">Elevation
+							(z):&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 						<input type="number3" step="1" min="-5000" max="10000" id="drawingElevation" name="elevation" value="200" placeholder="Elevation (z)">
-					</div><br>
-					<div class="label2" id="colourLabel" for="drawingColourLabel">Colour:&nbsp;&nbsp;&nbsp;&nbsp;
-						<!-- Add a colour picker-->
-						<input type="jscolor" id="drawingColour" name="drawingColour" data-jscolor="{value:'#FF0000'}" title="Drawing Colour" placeholder="Drawing Colour">&nbsp;&nbsp;&nbsp;
 					</div>
 					<br>
-					<div><label class="label2" id="lineWidthLabel">Line Width:&nbsp;&nbsp;
-							<!-- Add a colour picker-->
-							<input type="number2" id="drawingLineWidth" name="drawingLineWidth" value="1" placeholder="Object Width">
-						</label>
+					<div class="switch-container">
+						<div class="label2" id="colorLabel" for="drawingColorLabel">
+							Color:&nbsp;&nbsp;&nbsp;&nbsp;</div>
+						<!-- Add a Color picker-->
+						<input type="jscolor" id="drawingColor" name="drawingColor" data-jscolor="{value:'#FF0000'}" title="Drawing Color" placeholder="Drawing Color">&nbsp;&nbsp;&nbsp;
 					</div>
 					<br>
-					<div class="label2" id="pointDraw">Point Drawing:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					<div class="switch-container">
+						<div class="label2" id="lineWidthLabel">Line Width:&nbsp;&nbsp;</div>
+						<!-- Add a Color picker-->
+						<input type="number2" id="drawingLineWidth" name="drawingLineWidth" value="1" placeholder="Object Width">
+					</div>
+					<br>
+					<div class="switch-container">
+						<div class="label2" id="pointDraw">Point Drawing:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 						<label class="switch">
 							<input type="checkbox" id="addPointDraw" placeholder="addPointSwitch">
 							<span class="slider round"></span>
 						</label>
-					</div><br>
-					<div class="label2" id="lineDraw">Line Drawing:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					</div>
+					<br>
+					<div class="switch-container">
+						<div class="label2" id="lineDraw">Line
+							Drawing:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 						<label class="switch">
 							<input type="checkbox" id="addLineDraw" placeholder="addLineSwitch">
 							<span class="slider round"></span>
 						</label>
-					</div><br>
-					<div class="label2" id="polyDraw">Polygon Drawing:&nbsp;&nbsp;
+					</div>
+					<br>
+					<div class="switch-container">
+						<div class="label2" id="polyDraw">Polygon Drawing:&nbsp;&nbsp;</div>
 						<label class="switch">
 							<input type="checkbox" id="addPolyDraw" placeholder="addPolySwitch">
 							<span class="slider round"></span>
 						</label>
-					</div><br>
-					<div class="label2" id="circleDraw">Circle Drawing:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					</div>
+					<br>
+					<div class="switch-container">
+						<div class="label2" id="circleDraw">Circle Drawing:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						</div>
 						<label class="switch">
 							<input type="checkbox" id="addCircleDraw" placeholder="addCircleSwitch">
 							<span class="slider round"></span>
 						</label>
-						<label class="label2" id="drawingRadiusLabel">Radius(m):
+						<div>
+							<label class="label2" id="drawingRadiusLabel">Radius(m):</label>
 							<!-- Add a radius picker-->
 							<input type="number2" id="drawingRadius" name="drawingRadius" value="10" placeholder="Object Width">
-						</label>
-						<br><br>
-						<div class="label2" id="textDraw">Text Drawing:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-							<label class="switch">
-								<input type="checkbox" id="addTextDraw" placeholder="addTextSwitch">
-								<span class="slider round"></span>
-							</label>
-						</div><br>
-						<div class="label2" id="textLabel">Text:&nbsp;
-							<!-- Add a text field
-		              			<textarea id="drawingText" name="drawingText" placeholder="Text">Text</textarea>-->
-							<input type="text2" id="drawingText" name="drawingText" value="Text" placeholder="Text" maxlength="1000" width="flex">
 						</div>
-						<!-- A list of common JS Math values like PI "=Math.PI" in a label2-->
-						<div class="label2" id="commonMath">Use "=" at the front of the text to use JS Math or do calculations.</div>
-						<div class="label5" id="commonMath">
-							Math.PI: Math.E: Math.max(): Math.min(): Math.round(): Math.floor(): Math.ceil(): Math.random():
-							Math.sqrt():
-							Math.pow(): Math.abs(): Math.sin(): Math.cos(): Math.tan(): Math.asin(): Math.acos(): Math.atan():
-							Math.log(): .toFixed()<br>
-							<br><b>The mass of a charge length can be calculated ie.<br></b><i> =((Math.PI * Math.pow((229/2), 2)*10 *
-								1.18) / 1000).toFixed(2)</i>
-						</div>
-						<br>
 					</div>
+					<br>
+					<div class="switch-container">
+						<div class="label2" id="textDraw">Text
+							Drawing:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						</div>
+						<label class="switch">
+							<input type="checkbox" id="addTextDraw" placeholder="addTextSwitch">
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<br>
+					<div class="switch-container">
+						<div class="label2" id="textLabel">Text:&nbsp;</div>
+						<!-- Add a text field-->
+						<input type="text2" id="drawingText" name="drawingText" value="Text" placeholder="Text" maxlength="1000" width="flex">
+					</div>
+					<!-- A list of common JS Math values like PI "=Math.PI" in a label2-->
+					<div class="label2" id="commonMath1">Use "=" at the front of the text to use JS Math or do
+						calculations.
+					</div>
+					<div class="label5" id="commonMath2">
+						Math.PI: Math.E: Math.max(): Math.min(): Math.round(): Math.floor(): Math.ceil():
+						Math.random():
+						Math.sqrt():
+						Math.pow(): Math.abs(): Math.sin(): Math.cos(): Math.tan(): Math.asin(): Math.acos():
+						Math.atan():
+						Math.log(): .toFixed()<br>
+						<br><b>The mass of a charge length can be calculated ie.<br></b><i> =((Math.PI *
+							Math.pow((229/2), 2)*10
+							*
+							1.18) / 1000).toFixed(2)</i>
+					</div>
+					<!-- Create a button and a two textfields, the button is labelled "Create Radii of Holes", the 1st Text field is numeric and is labelled "Radii Steps", the 2nd is labelled Radius(m) -->
+					<!-- Add a Button labelled "Create Radii of Holes"-->
+					<div class="button-norm" id="createRadiiFromBlastHoles">Create Radii from Holes</div>
+
+					<br>
+					<div class="button-container-2col">
+						<div>
+							<label class="label2" id="radiiStepsLabel">Radii Steps:</label>
+							<input type="number2" id="radiiSteps" name="radiiSteps" value="36" placeholder="Radii Steps">
+						</div>
+						<div>
+							<label class="label2" id="drawingPolygonRadiusLabel">Radius(m):</label>
+							<input type="number2" id="drawingPolygonRadius" name="drawingPolygonRadius" value="300" placeholder="Object Width">
+						</div>
+					</div>
+
+					<br>
 				</div>
-				<button class="accordion">Drawing Removal</button>
+				<button class="accordion" id="drawingRemovalAcc">
+					<span>Drawing Removal</span></button>
 				<div class="panel">
-					<div class="label2" id="pointDeleteLabel">Point Delete:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					<div class="switch-container">
+						<div class="label2" id="pointDeleteLabel">Drawing Delete:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						</div>
 						<label class="switch">
-							<input type="checkbox" id="deletePointDraw" placeholder="deletPointSwitch">
+							<input type="checkbox" id="deleteKADDraw" placeholder="deletKADSwitch">
 							<span class="slider round"></span>
 						</label>
-					</div><br>
-					<div class="label2" id="lineDeleteLabel">Line Delete:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<label class="switch">
-							<input type="checkbox" id="deleteLineDraw" placeholder="deleteLineSwitch">
-							<span class="slider round"></span>
-						</label>
-					</div><br>
-					<div class="label2" id="polyDeleteLabel">Polygon Delete:&nbsp;&nbsp;
-						<label class="switch">
-							<input type="checkbox" id="deletePolyDraw" placeholder="deletePolySwitch">
-							<span class="slider round"></span>
-						</label>
-					</div><br>
-					<div class="label2" id="circleDeleteLabel">Circle Delete:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<label class="switch">
-							<input type="checkbox" id="deleteCircleDraw" placeholder="deleteCircleSwitch">
-							<span class="slider round"></span>
-						</label>
-					</div><br>
-					<div class="label2" id="textDeleteLabel">Text Delete:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						<label class="switch">
-							<input type="checkbox" id="deleteTextDraw" placeholder="deleteTextSwitch">
-							<span class="slider round"></span>
-						</label>
-					</div><br>
+					</div>
+					<br>
 					<div class="button-container-3col">
 						<div class="button-norm" id="deletePointButton">Point</div>
 						<div class="button-norm" id="deleteObjectButton">Object</button></div>
@@ -601,190 +2169,202 @@
 					</div>
 				</div>
 
-				<!--
-		          <button class="accordion">Drawing Edit</button>
-		          <div class="panel">
-		            <div class="label2" id="pointMoveLabel">Point Move:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-		              <label class="switch">
-		                <input type="checkbox" id="modifyPointDraw" placeholder="modifyPointDraw">
-		                <span class="slider round"></span>
-		              </label>
-		            </div><br>
-		            <div class="label2" id="lineOffsetLabel">Line/Poly Offset:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-		              <div class="button-container-3col">
-		                <label class="switch">
-		                  <input type="checkbox" id="offsetLinePolyDraw" placeholder="offsetLineDraw">
-		                  <span class="slider round"></span>
-		                </label>
-		                <input type="number2" step="1" min="-1000" max="1000" id="offset" name="offset" value="0.5" placeholder="Offset Amount">
-		                <div class="button-norm" id="offsetButton">Offset
-		                </div>
-		              </div>
-		            </div><br>
-		            <div class="label2" id="circleDeleteLabel">Circle Modify:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-		              <label class="switch">
-		                <input type="checkbox" id="modifyCircleDraw" placeholder="modifyCircleDraw">
-		                <span class="slider round"></span>
-		              </label>
-		            </div><br>
-		            <div class="label2" id="textDeleteLabel">Text Modify:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-		              <label class="switch">
-		                <input type="checkbox" id="modifyTextDraw" placeholder="modifyTextSwitch">
-		                <span class="slider round"></span>
-		              </label>
-		            </div><br>
-		            <div class="button-container-3col">
-		
-		              <div class="button-norm" id="deleteObjectButton">Object</button></div>
-		              <div class="button-norm-red" id="deleteAllButton">All</div>
-		              <br>
-		            </div>
-		
-		          </div>
-		          -->
+				<button class="accordion" id="voronoiOptionsAcc">
+					<span>Voronoi Display Options and Settings</span></button>
+				<div class="panel">
+					<!-- Voronoi Display Options presented in a select dropdown -->
+					<div class="label2" id="voronoiLabel">Voronoi Display Options:</div>
+					<select title="voronoiSelect" id="voronoiSelect" name="voronoiSelect">
+						<option value="powderFactor">Powder Factor (mass/volume)</option>
+						<option value="mass">Mass</option>
+						<option value="volume">Volume</option>
+						<option value="area">Area</option>
+						<option value="measuredLength">Measured Length</option>
+						<option value="designedLength">Designed Length</option>
+						<option value="holeFiringTime">Hole Firing Time</option>
+						<option value="heelanVibration">Heelan Vibration</option>
+						<option value="unknown">unknown</option>
+						<!-- Add More Here-->
+					</select>
+					<br>
+					<!-- Add Legend adjust.  Either Min-Max Values or Fixed-->
+					<div class="label2" id="voronoiLegendLabel">Voronoi Legend:</div>
+					<select title="voronoiLegendSelect" id="voronoiLegendSelect" name="voronoiLegendSelect">
+						<option value="minmax">Min-Max</option>
+						<option value="fixed">Fixed</option>
+						<!-- Add More Here-->
+					</select>
+					<br>
+					<!-- Add Switch to display Voronoi boundary-->
+					<div class="switch-container">
+						<div class="label2" id="voronoiBoundaryLabel">Use Toe Radii Boundary:</div>
+						<label class="switch">
+							<input type="checkbox" id="voronoiBoundarySwitch" placeholder="voronoiBoundarySwitch">
+							<span class="slider round"></span>
+						</label>
 
+					</div>
+					<br>
+					<br>
 
-				<a href="https://www.buymeacoffee.com/BrentBuffham">
-					<img src="https://img.buymeacoffee.com/button-api/?text=Buy Brent a coffee&emoji=&slug=BrentBuffham&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" />
-				</a>
-				<!--END - BUYMEACOFFEE REPORT BUTTON-->
+					<div class="label2c" id="buymeacoffeelabel">Show support with a cash donation</div><br>
+					<a href="https://www.buymeacoffee.com/BrentBuffham" id="buymeacoffee">
+						<img src="https://img.buymeacoffee.com/button-api/?text=Buy Brent a coffee&emoji=&slug=BrentBuffham&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" />
+					</a>
 
-				<!--START - BUG REPORT BUTTON-->
-				<br>
-				<a href="mailto:blastingapps.xyz@gmail.com?subject=Bug%20Report%20or%20Feature%20request&body=Application%20the%20issue%20or%20request%20is%20about:%0D%0A%0D%0A
-		          Description%20of%20the%20bug%20or%20feature:%0D%0A%0D%0ASteps%20to%20reproduce%20the%20bug%20or%20create%20the%20feature:%0D%0A%0D%0AExpected%20result:%0D%0A%0D%0AActual%20result:%0D%0A%0D%0A
-		            ">
-					<button class="button-bug">Report Bug / Request Feature</button>
-				</a>
-				<!--END - BUG REPORT BUTTON-->
+					<!--END - BUYMEACOFFEE REPORT BUTTON-->
 
+					<!--START - BUG REPORT BUTTON-->
+					<br>
+					<a href="mailto:blastingapps.xyz@gmail.com?subject=Bug%20Report%20or%20Feature%20request&body=Application%20the%20issue%20or%20request%20is%20about:%0D%0A%0D%0A
+              Description%20of%20the%20bug%20or%20feature:%0D%0A%0D%0ASteps%20to%20reproduce%20the%20bug%20or%20create%20the%20feature:%0D%0A%0D%0AExpected%20result:%0D%0A%0D%0AActual%20result:%0D%0A%0D%0A
+                ">
+						<button class="button-bug" id="bugButton">Report Bug / Request Feature</button>
+					</a>
+					<!--END - BUG REPORT BUTTON-->
+
+					<!-- resize handle was here and was invisible moved out of this div-->
+				</div>
 				<div id="resizeHandleRight" class="resize-handle-right"></div>
 				<!--END RIGHT HAND SIDE PANEL-->
 			</div>
-			<div class="top-controls">
-				<div class="labelbig" onclick="openNavLeft()">&#9776;</div>
-				<div class="spacer"></div>
-				<div class="labelTranparent" id="worldCoordinates">X: 0.0 Y: 0.0</div>
-				<div class="spacer"></div>
-				<div class="labelbig" onclick="openNavRight()">&#9776;</div>
-			</div>
 
-			<canvas id="canvas"></canvas>
-			<div class="toggle-buttons-container">
-				<div class="toggle-buttons-custom">
-					<input type="checkbox" id="display1" name="display" value="Hole ID" placeholder="Hole ID" checked>
-					<label for="display1" class="icon-button" title="Hole ID">
-						<img src="assets/icons/holename.png" alt="Hole ID">
-					</label>
-					<input type="checkbox" id="display2" name="display" value="Hole Length" placeholder="Hole Length">
-					<label for="display2" class="icon-button" title="Hole Length">
-						<img src="assets/icons/holelength.png" alt="Hole Length">
-					</label>
-					<input type="checkbox" id="display2A" name="display" value="Hole Diameter" placeholder="Hole Diameter">
-					<label for="display2A" class="icon-button" title="Hole Diameter">
-						<img src="assets/icons/holediam.png" alt="Hole Diameter">
-					</label>
-					<input type="checkbox" id="display3" name="display" value="Angle" placeholder="Angle">
-					<label for="display3" class="icon-button" title="Hole Angle">
-						<img src="assets/icons/holeangle.png" alt="Hole Angle">
-					</label>
-					<input type="checkbox" id="display4" name="display" value="Dip" placeholder="Dip">
-					<label for="display4" class="icon-button" title="Hole Dip">
-						<img src="assets/icons/holedip.png" alt="Hole Dip">
-					</label>
-					<input type="checkbox" id="display5" name="display" value="Bearing" placeholder="Bearing">
-					<label for="display5" class="icon-button" title="Hole Bearing">
-						<img src="assets/icons/holebearing.png" alt="Hole Bearing">
-					</label>
-					<input type="checkbox" id="display5A" name="display" value="Ties" placeholder="Ties">
-					<label for="display5A" class="icon-button" title="Ties">
-						<img src="assets/icons/tieconnect.png" alt="Ties">
-					</label>
-					<input type="checkbox" id="display6" name="display" value="Connectors" placeholder="Delay Value">
-					<label for="display6" class="icon-button" title="Delay Value">
-						<img src="assets/icons/tiedelays.png" alt="Delay Value">
-					</label>
-					<input type="checkbox" id="display6A" name="display" value="TimesOnly" placeholder="TimesOnly">
-					<label for="display6A" class="icon-button" title="Hole Time">
-						<img src="assets/icons/holetimes.png" alt="Hole Time">
-					</label>
-					<!-- <input type="checkbox" id="display7" name="display" value="Times" placeholder="Times"> -->
-					<input type="checkbox" id="display8" name="display" value="Contours" placeholder="Contours">
-					<label for="display8" class="icon-button" title="Contours">
-						<img src="assets/icons/contours.png" alt="Contours">
-					</label>
-					<input type="checkbox" id="display8A" name="display" value="Slope" placeholder="slope">
-					<label for="display8A" class="icon-button" title="Slope">
-						<img src="assets/icons/slopemap.png" alt="Slope">
-					</label>
-					<input type="checkbox" id="display8B" name="display" value="Relief" placeholder="relief">
-					<label for="display8B" class="icon-button" title="Relief">
-						<img src="assets/icons/reliefmap.png" alt="Relief">
-					</label>
-					<input type="checkbox" id="display8C" name="display" value="direction" placeholder="direction">
-					<label for="display8C" class="icon-button" title="First Movement">
-						<img src="assets/icons/firstmovement.png" alt="First Movement">
-					</label>
-					<input type="checkbox" id="display9" name="display" value="xlocation" placeholder="xlocation">
-					<label for="display9" class="icon-button" title="Hole X Location">
-						<img src="assets/icons/xmeterseast.png" alt="Hole X Location">
-					</label>
-					<input type="checkbox" id="display10" name="display" value="ylocation" placeholder="ylocation">
-					<label for="display10" class="icon-button" title="Hole Y Location">
-						<img src="assets/icons/ymetersnorth.png" alt="Hole Y Location">
-					</label>
-					<input type="checkbox" id="display11" name="display" value="zlocation" placeholder="zlocation">
-					<label for="display11" class="icon-button" title="Hole Z Location">
-						<img src="assets/icons/zmetersalt.png" alt="Hole Z Location">
-					</label>
-					<input type="checkbox" id="display12" name="display" value="holeType" placeholder="holeType">
-					<label for="display12" class="icon-button" title="Hole Type">
-						<img src="assets/icons/holetype.png" alt="Hole Type">
-					</label>
-					<input type="checkbox" id="display13" name="display" value="measure" placeholder="measure">
-					<label for="display13" class="icon-button" title="Measured Length">
-						<img src="assets/icons/measuredlength.png" alt="Measured Length">
-					</label>
-					<input type="checkbox" id="display14" name="display" value="mass" placeholder="mass">
-					<label for="display14" class="icon-button" title="Measured Mass">
-						<img src="assets/icons/measuredmass.png" alt="Measured Mass">
-					</label>
-					<input type="checkbox" id="display15" name="display" value="comment" placeholder="comment">
-					<label for="display15" class="icon-button" title="Comment">
-						<img src="assets/icons/measuredcomment.png" alt="Comment">
-					</label>
-				</div>
-			</div>
 		</div>
 		<!--END CANVAS AND MODE DISPLY BUTTONS-->
-
 		<div id="floating-toolbar">
+			<label class="label2" id="dragLabel">═════</label>
+			<label class="label2" id="selectLabel">Select</label>
+			<input type="checkbox" id="selectPointer" name="selectPointer" value="selectPointer">
+			<label for="selectPointer" class="toggle-buttons-custom icon-button" title="selectPointer">
+				<img src="assets/icons/pointer.png" alt="selectPointer">
+			</label>
+			<input type="checkbox" id="selectByPolygon" name="selectByPolygon" value="selectByPolygon">
+			<label for="selectByPolygon" class="toggle-buttons-custom icon-button" title="selectByPolygon">
+				<img src="assets/icons/pointer-select-polygon.png" alt="selectByPolygon">
+			</label>
+			<label class="label2" id="createLabel">Create</label>
+			<input type="checkbox" id="patternInPolygonTool" name="patternInPolygonTool" value="patternInPolygonTool">
+			<label for="patternInPolygonTool" class="toggle-buttons-custom icon-button" title="Pattern in Polygon">
+				<img src="assets/icons/pattern.png" alt="Pattern in Polygon">
+			</label>
+			<input type="checkbox" id="holesAlongLineTool" name="holesAlongLineTool" value="holesAlongLineTool">
+			<label for="holesAlongLineTool" class="toggle-buttons-custom icon-button" title="Holes Along Line">
+				<img src="assets/icons/line.png" alt="Holes Along Line">
+			</label>
+			<!-- this is a single icon button that spans both columns -->
+			<input type="checkbox" id="holesAlongPolyLineTool" name="holesAlongPolyLineTool" value="holesAlongPolyLineTool">
+			<label for="holesAlongPolyLineTool" class="toggle-buttons-custom icon-button single" title="Holes Along PolyLine">
+				<img src="assets/icons/shape-2.png" alt="Holes Along PolyLine">
+			</label>
 
-			<div class="toggle-buttons-custom">
-				<input type="checkbox" id="connectSingle" name=connectSingle value="connectSingle" placeholder="connectSingle">
-				<label for="connectSingle" class="icon-button" title="connectSingle">
-					<img src="assets/icons/tieconnect.png" alt="connectSingle">
-				</label>
-			</div>
-			<div class="toggle-buttons-custom">
-				<input type="checkbox" id="connectMulti" name=connectMulti value="connectMulti" placeholder="connectMulti">
-				<label for="connectMulti" class="icon-button" title="connectMulti">
-					<img src="assets/icons/tieconnectmulti.png" alt="connectMulti">
-				</label>
-			</div>
-			<div class="toggle-buttons-custom">
-				<input type="checkbox" id="pattern" name=pattern value="pattern" placeholder="pattern">
-				<label for="pattern" class="icon-button" title="pattern">
-					<img src="assets/icons/pattern.png" alt="pattern">
-				</label>
+			<label class="label2" id="modifyLabel">Modify</label>
+			<input type="checkbox" id="moveToTool" name="moveToTool" value="moveToTool">
+			<label for="moveToTool" class="toggle-buttons-custom icon-button" title="Move To">
+				<img src="assets/icons/arrows-move.png" alt="Move">
+			</label>
+			<input type="checkbox" id="bearingTool" name="bearingTool" value="bearingTool">
+			<label for="bearingTool" class="toggle-buttons-custom icon-button" title="Hole Bearing">
+				<img src="assets/icons/rotate-dot.png" alt="Hole Bearing">
+			</label>
+			<input type="checkbox" id="assignSurfaceTool" name="assignSurfaceTool" value="assignSurfaceTool">
+			<label for="assignSurfaceTool" class="toggle-buttons-custom icon-button" title="Assign Surface">
+				<img src="assets/icons/adjustments-up.png" alt="Assign Surface">
+			</label>
+			<input type="checkbox" id="assignGradeTool" name="assignGradeTool" value="assignGradeTool">
+			<label for="assignGradeTool" class="toggle-buttons-custom icon-button" title="Assign Grade">
+				<img src="assets/icons/adjustments-down.png" alt="Assign Grade">
+			</label>
 
-			</div>
+			<label class="label2" id="connectLabel">Connect</label>
+			<input type="checkbox" id="tieConnectTool" name="tieConnectTool" value="tieConnectTool">
+			<label for="tieConnectTool" class="toggle-buttons-custom icon-button" title="Tie Connect">
+				<img src="assets/icons/tieconnect.png" alt="Tie Connect">
+			</label>
+			<input type="checkbox" id="tieConnectMultiTool" name="tieConnectMultiTool" value="tieConnectMultiTool">
+			<label for="tieConnectMultiTool" class="toggle-buttons-custom icon-button" title="Tie Connect Multi">
+				<img src="assets/icons/tieconnectmulti.png" alt="Tie Connect Multi">
+			</label>
+			<!-- this is a single icon button that spans both columns -->
+			<input type="number2" step="1" min="-1000" max="1000" id="floatingDelay" name="floatingDelay" value="25" placeholder="Delay Amount" class="single">
+			<!-- this is a single icon button that spans both columns -->
+			<input type="button" id="floatingConnectorColor" name="floatingConnectorColor" data-jscolor="{value:'#FF0000'}" title="Connector Color" placeholder="Connector Color" class="single">
+
+			<label class="label2" id="measureLabel">Measure</label>
+			<input type="checkbox" id="rulerTool" name="rulerTool" value="rulerTool">
+			<label for="rulerTool" class="toggle-buttons-custom icon-button" title="Ruler">
+				<img src="assets/icons/ruler-measure.png" alt="Ruler">
+			</label>
+			<input type="checkbox" id="rulerProtractorTool" name="rulerProtractorTool" value="rulerProtractorTool">
+			<label for="rulerProtractorTool" class="toggle-buttons-custom icon-button" title="Ruler Protractor">
+				<img src="assets/icons/ruler-bearing.png" alt="Ruler Protractor">
+			</label>
+			<label class="label2" id="viewLabel">View</label>
+			<!-- Add class="toggle-buttons-custom icon-button single" to make it a single icon button-->
+			<input type="checkbox" id="resetViewTool" name="resetViewTool" value="resetViewTool">
+			<label for="resetViewTool" class="toggle-buttons-custom icon-button" title="Reset View">
+				<img src="assets/icons/circle-letter-r.png" alt="Reset View">
+			</label>
+			<!-- Add class="toggle-buttons-custom icon-button single" to make it a single icon button-->
+			<input type="checkbox" id="showTreeBtn" name="showTreeBtn" value="showTreeBtn">
+			<label for="showTreeBtn" class="toggle-buttons-custom icon-button" title="Show Data Explorer">
+				<img src="assets/icons/article.png" alt="Data Explorer">
+			</label>
+
+			<!-- </div> -->
 			<!-- Add more buttons as needed -->
 		</div>
+		<!-- END - FLOATING TOOLBAR -->
+		<!-- Add this to your HTML body, preferably near the end -->
+		<div id="treePanel" class="tree-panel">
+			<div class="tree-panel-header" id="treePanelHeader">
+				<span>Data Explorer</span>
+				<div class="tree-panel-controls">
+					<button class="tree-panel-btn" id="treeCollapseBtn" title="Collapse/Expand">−</button>
+					<button class="tree-panel-btn" id="treeCloseBtn" title="Close">×</button>
+				</div>
+			</div>
+			<div class="tree-panel-content" id="treePanelContent">
+				<ul class="tree-view" id="treeView">
+					<!-- Tree content will be dynamically generated -->
+				</ul>
+			</div>
+		</div>
 
+		<!-- Context Menu -->
+		<div id="treeContextMenu" class="tree-context-menu" title="Context Menu">
+			<div class="tree-context-item" data-action="rename">
+				<span class="tree-icon"></span>
+				<span>Rename</span>
+			</div>
+			<div class="tree-context-item" data-action="delete">
+				<span class="tree-icon"></span>
+				<span>Delete</span>
+			</div>
+			<div class="tree-context-item" data-action="hide">
+				<span class="tree-icon"></span>
+				<span>Hide</span>
+			</div>
+			<div class="tree-context-item" data-action="show">
+				<span class="tree-icon"></span>
+				<span>Show</span>
+			</div>
+			<div class="tree-context-item" data-action="reset-connections">
+				<span class="tree-icon"></span>
+				<span>Reset Connections</span>
+			</div>
+			<div class="tree-context-separator"></div>
+			<div class="tree-context-item" data-action="properties">
+				<span class="tree-icon"></span>
+				<span>Properties</span>
+			</div>
+		</div>
+
+		</div>
+
+		<!-- END OF MAIN CONTENT -->
 
 		<!-- Link to your JavaScript file -->
-		<script type="module" src="kirra.js"></script>
+		<script src="kirra.js"></script>
 
 	</body>
 
